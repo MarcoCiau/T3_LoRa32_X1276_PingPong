@@ -5,6 +5,8 @@
 */
 #include <RadioLib.h>
 
+#include "ui.h"
+
 // uncomment the following only on one
 // of the nodes to initiate the pings
 // 注释INITIATING_NODE这行初始化接收,打开这行初始化发送,两个设备，必须一个初始化为接收另一个初始化为发送才能收到
@@ -51,11 +53,44 @@ void setFlag(void)
     operationDone = true;
 }
 
+// Kept alive until the radio finishes; startTransmit() uses this pointer.
+static char packet[32];
+
+static void sendPacket()
+{
+    static uint16_t seq = 0;
+    seq++;
+
+#if defined(INITIATING_NODE)
+    snprintf(packet, sizeof(packet), "Ping %u", seq);
+#else
+    snprintf(packet, sizeof(packet), "Pong %u", seq);
+#endif
+
+    Serial.print(F("[SX1276] Sending "));
+    Serial.println(packet);
+    ui.onTransmit(packet);
+    transmissionState = radio.startTransmit(packet);
+    transmitFlag = true;
+    if (transmissionState != RADIOLIB_ERR_NONE) {
+        ui.onTransmitDone(transmissionState);
+    }
+}
+
 void setup()
 {
     Serial.begin(115200);
 
     pinMode(BOARD_LED, OUTPUT);
+
+    if (!ui.begin()) {
+        Serial.println(F("[OLED] not found at 0x3C"));
+    }
+#if defined(INITIATING_NODE)
+    ui.setRole("INIT");
+#else
+    ui.setRole("REPLY");
+#endif
 
     SPI.begin(RADIO_SCLK_PIN, RADIO_MISO_PIN, RADIO_MOSI_PIN);
 
@@ -64,9 +99,11 @@ void setup()
     int state = radio.begin();
     if (state == RADIOLIB_ERR_NONE) {
         Serial.println(F("success!"));
+        ui.setStatus("Radio ok");
     } else {
         Serial.print(F("failed, code "));
         Serial.println(state);
+        ui.setStatus("Radio fail");
         while (true) {
             delay(10);
         }
@@ -81,18 +118,18 @@ void setup()
 
 #if defined(INITIATING_NODE)
     // send the first packet on this node
-    Serial.print(F("[SX1276] Sending first packet ... "));
-    transmissionState = radio.startTransmit("Hello World!");
-    transmitFlag = true;
+    sendPacket();
 #else
     // start listening for LoRa packets on this node
     Serial.print(F("[SX1276] Starting to listen ... "));
     state = radio.startReceive();
     if (state == RADIOLIB_ERR_NONE) {
         Serial.println(F("success!"));
+        ui.setStatus("Listening");
     } else {
         Serial.print(F("failed, code "));
         Serial.println(state);
+        ui.setStatus("RX fail");
         while (true) {
             delay(10);
         }
@@ -122,10 +159,12 @@ void loop()
                 Serial.println(transmissionState);
 
             }
+            ui.onTransmitDone(transmissionState);
 
             // listen for response
             radio.startReceive();
             transmitFlag = false;
+            ui.setStatus("Listening");
 
         } else {
             // the previous operation was reception
@@ -154,15 +193,16 @@ void loop()
                 Serial.print(radio.getSNR());
                 Serial.println(F(" dB"));
 
+                ui.onReceive(str.c_str(), radio.getRSSI(), radio.getSNR());
+
+            } else {
+                ui.onReceiveError(state);
             }
 
             // wait a second before transmitting again
             delay(1000);
 
-            // send another one
-            Serial.print(F("[SX1276] Sending another packet ... "));
-            transmissionState = radio.startTransmit("Hello World!");
-            transmitFlag = true;
+            sendPacket();
         }
 
     }
