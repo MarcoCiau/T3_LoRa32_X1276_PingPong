@@ -8,7 +8,7 @@ Doxygen comments belong on every new or edited `.h` and `.cpp`. Suggest a conven
 
 ## Checklist
 
-- [ ] **F1** Energy payload codec
+- [x] **F1** Energy payload codec
 - [ ] **F2** Node mock energy telemetry
 - [ ] **F3** Gateway prints every node without Wi-Fi
 - [ ] **F4** ThingsBoard energy JSON
