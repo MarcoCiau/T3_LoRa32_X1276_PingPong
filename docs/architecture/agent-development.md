@@ -135,7 +135,7 @@ Native tests (`env:native`, Unity) cover `lib/protocol` and state machines fed b
 Mark a box only after that task’s verification command succeeds.
 
 - [x] **T0** Scaffold envs and folders
-- [ ] **T1** Message types
+- [x] **T1** Message types
 - [ ] **T2** Header codec
 - [ ] **T3** Payload codec
 - [ ] **T4** Sequence manager
