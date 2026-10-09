@@ -1,6 +1,6 @@
 /**
  * @file radio_port.cpp
- * @brief Translation unit for RadioPort. The port stays header-only until an adapter exists.
+ * @brief Translation unit for the header-only RadioPort.
  */
 
 #include "radio_port.h"

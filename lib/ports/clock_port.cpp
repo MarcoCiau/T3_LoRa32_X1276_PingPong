@@ -1,6 +1,6 @@
 /**
  * @file clock_port.cpp
- * @brief Translation unit for ClockPort. The port stays header-only until an adapter exists.
+ * @brief Translation unit for the header-only ClockPort.
  */
 
 #include "clock_port.h"
