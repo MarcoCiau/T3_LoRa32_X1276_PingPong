@@ -24,7 +24,7 @@
 #include "../../src/gateway/wifi_manager.h"
 #include "../../src/node/command_service.h"
 #include "../../src/node/provisioning.h"
-#include "../../src/node/radio_service.h"
+// #include "../../src/node/radio_service.h"
 #include "../../src/node/telemetry_service.h"
 
 void setUp(void) {}
