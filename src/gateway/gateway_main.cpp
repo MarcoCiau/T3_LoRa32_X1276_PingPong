@@ -2,8 +2,8 @@
  * @file gateway_main.cpp
  * @brief Gateway bring-up: listen, and answer a node check-in with an Ack.
  *
- * The receive path does not start Wi-Fi or MQTT. The Ack transmit is the radio
- * operation that follows a valid packet.
+ * The receive path does not publish MQTT. Wi-Fi poll runs after the radio step and returns
+ * without waiting for the association.
  */
 
 #include <Arduino.h>
@@ -18,6 +18,7 @@
 #include "random_port.h"
 #include "security.h"
 #include "sequence_manager.h"
+#include "wifi_manager.h"
 
 #include "../node/radio_service.h"
 
@@ -73,16 +74,21 @@ struct GatewayApp {
     gateway::CommandQueue commands;
     gateway::OutboundQueue uplink;
     gateway::RadioService coordinator;
+    gateway::EspWifiStation station;
+    gateway::WifiLink wifi;
 
     /**
      * @brief Bind the coordinator to @p store.
+     *
+     * Wi-Fi is constructed with the lab credentials. An empty SSID leaves the station down.
      * @param store Open NVS record store. Must outlive this object.
      */
     explicit GatewayApp(PreferencesRecordStore& store)
         : seq(rng),
           replay(store),
           commands(store),
-          coordinator(radio, clock, codec, seq, replay, auth, registry, commands, uplink) {}
+          coordinator(radio, clock, codec, seq, replay, auth, registry, commands, uplink),
+          wifi(clock, station, gateway::kWifiSsid, gateway::kWifiPassword) {}
 };
 
 PreferencesRecordStore store;
@@ -129,6 +135,7 @@ void setup() {
     if (app->coordinator.poll() != proto::Status::Ok) {
         halt(F("[gateway] listen fail"));
     }
+    app->wifi.begin();
     Serial.println(F("[gateway] listening"));
 }
 
@@ -140,6 +147,7 @@ void loop() {
     }
 
     const proto::Status stepped = app->coordinator.poll();
+    app->wifi.poll();
     if (stepped == proto::Status::Busy || stepped == proto::Status::Ok) {
         gateway::NodeFacts facts = {};
         static bool heard = false;

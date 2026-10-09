@@ -1,6 +1,6 @@
 # Gateway hardware test
 
-Flash this image before the node. The gateway listens on the lab radio profile and answers a node telemetry frame with one ACK. The receive path does not use Wi-Fi or MQTT. The ping-pong image is a different build and is not this test.
+Flash this image before the node. The gateway listens on the lab radio profile and answers a node telemetry frame with one ACK. MQTT is not on the receive path. Wi-Fi stays down until `kWifiSsid` in `src/gateway/wifi_manager.h` is set, and the radio loop does not wait for it. The ping-pong image is a different build and is not this test.
 
 The node steps are in [node-hardware-test.md](node-hardware-test.md).
 

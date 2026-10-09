@@ -146,15 +146,15 @@ Mark a box only after that task’s verification command succeeds.
 - [x] **T9** Gateway registry and command queue
 - [x] **T10** Gateway coordinator on fakes
 - [x] **T11** Outbound buffer
-- [ ] **T12** Node RadioLib adapter
-- [ ] **T13** Gateway RadioLib adapter
-- [ ] **T14** Wi-Fi link
+- [x] **T12** Node RadioLib adapter
+- [x] **T13** Gateway RadioLib adapter
+- [x] **T14** Wi-Fi link
 - [ ] **T15** MQTT service
 - [ ] **T16** Composition roots
 - [ ] **T17** AES-CCM
 - [ ] **T18** Bench checks
 
-T12 and T13 need the board. T0–T11 and T17’s vectors run on the host. T14–T16 need the board for a smoke flash and still keep network code out of the codec.
+T12 and T13 need the board. T0–T11, T14’s reconnect schedule, and T17’s vectors run on the host. A live association waits until `kWifiSsid` is set. T15–T16 need the board for a smoke flash and still keep network code out of the codec.
 
 ### T0 — Scaffold
 

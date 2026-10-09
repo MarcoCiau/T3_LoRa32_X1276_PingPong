@@ -5,7 +5,7 @@
 */
 #include <RadioLib.h>
 
-#include "ui.h"
+// #include "ui.h"
 
 // uncomment the following only on one
 // of the nodes to initiate the pings
