@@ -32,4 +32,21 @@ public:
         count = static_cast<uint8_t>(count + 1);
         return proto::Status::Ok;
     }
+
+    /**
+     * @brief Remove the oldest record.
+     * @param out Receives that record. Required.
+     * @return true when a record was removed.
+     */
+    bool pop(gateway::UplinkRecord* out) override {
+        if (out == nullptr || count == 0) {
+            return false;
+        }
+        *out = records[0];
+        for (uint8_t index = 1; index < count; ++index) {
+            records[index - 1] = records[index];
+        }
+        count = static_cast<uint8_t>(count - 1);
+        return true;
+    }
 };

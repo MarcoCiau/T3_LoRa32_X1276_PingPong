@@ -39,10 +39,10 @@ struct UplinkRecord {
 };
 
 /**
- * @brief Append-only sink for uplinks.
+ * @brief Sink for uplinks the radio has accepted.
  *
  * The radio coordinator calls push() and returns. It does not publish, and it does not
- * wait on Wi-Fi. A later task adds the bounded queue and pop().
+ * wait on Wi-Fi. The network side calls pop(). OutboundQueue is the bounded implementation.
  */
 class OutboundBuffer {
 public:
@@ -54,6 +54,13 @@ public:
      * @return Status::Ok when the record was stored. Status::Busy when the sink cannot take it.
      */
     virtual proto::Status push(const UplinkRecord& record) = 0;
+
+    /**
+     * @brief Remove the oldest stored record.
+     * @param out Receives that record. Required.
+     * @return true when a record was removed.
+     */
+    virtual bool pop(UplinkRecord* out) = 0;
 };
 
 }  // namespace gateway

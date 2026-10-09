@@ -145,7 +145,7 @@ Mark a box only after that task’s verification command succeeds.
 - [x] **T8** Node command policy
 - [x] **T9** Gateway registry and command queue
 - [x] **T10** Gateway coordinator on fakes
-- [ ] **T11** Outbound buffer
+- [x] **T11** Outbound buffer
 - [ ] **T12** Node RadioLib adapter
 - [ ] **T13** Gateway RadioLib adapter
 - [ ] **T14** Wi-Fi link
