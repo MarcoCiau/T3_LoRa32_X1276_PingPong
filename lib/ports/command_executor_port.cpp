@@ -1,6 +1,6 @@
 /**
  * @file command_executor_port.cpp
- * @brief Translation unit for CommandExecutorPort. The port stays header-only until an executor exists.
+ * @brief Translation unit for the header-only CommandExecutorPort.
  */
 
 #include "command_executor_port.h"

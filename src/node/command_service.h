@@ -1,6 +1,6 @@
 /**
  * @file command_service.h
- * @brief Node command service: validate a piggybacked command, run it once, emit the result.
+ * @brief Placeholder. Command policy lives in NodeCheckIn. The no-op executor is NopCommandExecutor.
  */
 
 #pragma once

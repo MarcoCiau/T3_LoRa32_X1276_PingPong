@@ -11,6 +11,7 @@
 #include <sequence_manager.h>
 
 #include "../fakes/fake_clock.h"
+#include "../fakes/fake_command_executor.h"
 #include "../fakes/fake_radio.h"
 #include "../fakes/fake_random.h"
 #include "../fakes/memory_record_store.h"
@@ -26,12 +27,13 @@ struct Fixture {
     MemoryRecordStore store;
     proto::ReplayWindow replay;
     proto::LabAuthOff auth;
+    FakeCommandExecutor commands;
     node::NodeCheckIn checkIn;
 
     explicit Fixture(uint32_t intervalMs)
         : seq(rng),
           replay(store),
-          checkIn(radio, clock, rng, seq, codec, replay, auth, 1, intervalMs) {
+          checkIn(radio, clock, rng, seq, codec, replay, auth, commands, store, 1, intervalMs) {
         rng.next = 200;
     }
 };

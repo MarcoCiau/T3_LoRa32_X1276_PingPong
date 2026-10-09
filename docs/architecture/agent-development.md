@@ -142,7 +142,7 @@ Mark a box only after that task’s verification command succeeds.
 - [x] **T5** Auth port, lab auth off
 - [x] **T6** Record store port and RAM fake (for port-hal, use esp32 nvs (#include <Preferences.h>) ) t
 - [x] **T7** Node check-in on fakes
-- [ ] **T8** Node command policy
+- [x] **T8** Node command policy
 - [ ] **T9** Gateway registry and command queue
 - [ ] **T10** Gateway coordinator on fakes
 - [ ] **T11** Outbound buffer
