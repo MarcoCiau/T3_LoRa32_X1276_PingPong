@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "energy_payload.h"
 #include "message_types.h"
 
 #include <cstdint>
@@ -25,17 +26,20 @@ enum class UplinkKind : uint8_t {
  * @brief One accepted uplink, copied by value.
  *
  * Telemetry uses seq, counter, rssi, and snr. A command result uses commandId and resultStatus.
+ * hasEnergy is true only when the telemetry body decoded as energy version 1.
  * The other fields are zero. This struct does not own heap memory.
  */
 struct UplinkRecord {
-    UplinkKind kind;       ///< Telemetry or CommandResult.
-    uint8_t nodeId;        ///< Sender, 1..proto::kMaxNodeId.
-    uint16_t seq;          ///< Telemetry sequence. Zero for a command result.
-    uint32_t counter;      ///< Telemetry replay counter. Zero for a command result.
-    uint32_t commandId;    ///< Result command id. Zero for telemetry.
-    uint8_t resultStatus;  ///< CommandResultStatus value. Zero for telemetry.
-    float rssi;            ///< RSSI in dBm. Zero for a command result.
-    float snr;             ///< SNR in dB. Zero for a command result.
+    UplinkKind kind;             ///< Telemetry or CommandResult.
+    uint8_t nodeId;              ///< Sender, 1..proto::kMaxNodeId.
+    uint16_t seq;                ///< Telemetry sequence. Zero for a command result.
+    uint32_t counter;            ///< Telemetry replay counter. Zero for a command result.
+    uint32_t commandId;          ///< Result command id. Zero for telemetry.
+    uint8_t resultStatus;        ///< CommandResultStatus value. Zero for telemetry.
+    float rssi;                  ///< RSSI in dBm. Zero for a command result.
+    float snr;                   ///< SNR in dB. Zero for a command result.
+    bool hasEnergy;              ///< True when energy holds a version-1 body.
+    proto::EnergyReading energy; ///< Valid when hasEnergy is true.
 };
 
 /**

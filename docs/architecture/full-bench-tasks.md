@@ -10,7 +10,7 @@ Doxygen comments belong on every new or edited `.h` and `.cpp`. Suggest a conven
 
 - [x] **F1** Energy payload codec
 - [x] **F2** Node mock energy telemetry
-- [ ] **F3** Gateway prints every node without Wi-Fi
+- [x] **F3** Gateway prints every node without Wi-Fi
 - [ ] **F4** ThingsBoard energy JSON
 
 ### F1 — Energy payload codec

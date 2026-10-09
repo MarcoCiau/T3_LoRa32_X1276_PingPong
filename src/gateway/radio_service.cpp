@@ -9,6 +9,7 @@
 #include "radio_service.h"
 
 #include "clock_port.h"
+#include "energy_payload.h"
 #include "node_registry.h"
 #include "outbound_buffer.h"
 #include "packet_codec.h"
@@ -137,7 +138,15 @@ proto::Status RadioService::acceptTelemetry(const proto::DecodedPacket& packet, 
         return proto::Status::Ok;
     }
 
-    registry_.observe(packet.srcId, packet.counter, packet.seq, rssi, snr, clock_.millis());
+    proto::EnergyReading reading = {};
+    const bool hasEnergy = proto::decodeEnergy(packet.payload, packet.payloadLen, &reading) == proto::Status::Ok;
+    registry_.observe(packet.srcId,
+                      packet.counter,
+                      packet.seq,
+                      rssi,
+                      snr,
+                      clock_.millis(),
+                      hasEnergy ? &reading : nullptr);
 
     UplinkRecord uplink = {};
     uplink.kind = UplinkKind::Telemetry;
@@ -146,6 +155,10 @@ proto::Status RadioService::acceptTelemetry(const proto::DecodedPacket& packet, 
     uplink.counter = packet.counter;
     uplink.rssi = rssi;
     uplink.snr = snr;
+    uplink.hasEnergy = hasEnergy;
+    if (hasEnergy) {
+        uplink.energy = reading;
+    }
     (void)uplink_.push(uplink);
 
     QueuedCommand command = {};

@@ -1,8 +1,6 @@
 # Full bench test
 
-This is the lab procedure for one gateway and up to ten nodes. Each node sends the 15-byte mock energy body. The gateway still prints node 1 only, without those fields, until F3 and F4 in [full-bench-tasks.md](architecture/full-bench-tasks.md).
-
-The gateway monitor shows sequence, counter, RSSI, and SNR. It does not print voltage or energy, and the ThingsBoard JSON does not contain those fields yet.
+This is the lab procedure for one gateway and up to ten nodes. Each node sends the 15-byte mock energy body. The gateway prints that body for every id from 1 to 10. The ThingsBoard JSON does not contain those fields yet. That is F4 in [full-bench-tasks.md](architecture/full-bench-tasks.md).
 
 ## What you need
 
@@ -48,14 +46,14 @@ pio device monitor -b 115200
 
 Boot ends with `[gateway] listening`. Wi-Fi is not started. MQTT is not started. Each accepted check-in still gets one ACK.
 
-Today the monitor shows only node 1:
+The monitor prints every accepted id from 1 to 10. Voltage is volts, current is amps, power is watts, watt-hours stays watt-hours, power factor is 0–1, and frequency is hertz:
 
 ```text
-[gateway] telemetry node 1 seq 1 counter 1 rssi ... snr ...
+[gateway] telemetry node 1 seq 1 counter 1 rssi ... snr ... voltage 230.10 current 1.001 power 101 watt-hours 1001 power-factor 0.950 frequency 50.00
 [gateway] ack sent
 ```
 
-After the energy tasks, the same empty-SSID image prints every id from 1 to 10, including the mock energy fields, and still does not open a socket.
+An empty or unknown body still prints the sequence line and still gets an ACK, without the energy fields. Wi-Fi and MQTT stay down while the SSID and token are empty.
 
 ## Gateway with ThingsBoard
 
@@ -72,7 +70,7 @@ Today a connected gateway publishes one JSON object per accepted uplink, without
 {"node":1,"kind":"telemetry","seq":1,"counter":1,"rssi":-40.0,"snr":8.0}
 ```
 
-After the energy tasks, that object also carries `voltage`, `current`, `powerW`, `energyWh`, `powerFactor`, and `frequencyHz`. The serial line is still printed when Wi-Fi is up. Publishing happens only after `WifiLink` is associated and the MQTT session is up. One uplink record leaves the queue per `loop`.
+After F4, that object also carries `voltage`, `current`, `powerW`, `energyWh`, `powerFactor`, and `frequencyHz`. The serial line is still printed when Wi-Fi is up. Publishing happens only after `WifiLink` is associated and the MQTT session is up. One uplink record leaves the queue per `loop`.
 
 ## Mock energy body
 

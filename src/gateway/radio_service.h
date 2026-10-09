@@ -29,7 +29,9 @@ class OutboundBuffer;
  * @brief Receive one node packet and answer with an Ack before returning.
  *
  * A new telemetry sequence updates the registry, appends one uplink, and may carry
- * the node's oldest pending command. The same sequence is Acked again and does not
+ * the node's oldest pending command. A version-1 energy body is copied onto that
+ * uplink. An empty or unknown body is still Acked, with the energy fields absent.
+ * The same sequence is Acked again and does not
  * append a second uplink or deliver another command. A CommandResult updates the
  * queue and appends one result uplink. Invalid packets are not answered.
  * poll() does not open a socket and does not call delay(). startTransmit of the Ack

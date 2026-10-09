@@ -12,7 +12,8 @@ proto::Status NodeRegistry::observe(uint8_t nodeId,
                                     uint16_t seq,
                                     float rssi,
                                     float snr,
-                                    uint32_t seenMs) {
+                                    uint32_t seenMs,
+                                    const proto::EnergyReading* energy) {
     if (nodeId < proto::kMinNodeId || nodeId > proto::kMaxNodeId) {
         return proto::Status::BadDestination;
     }
@@ -23,6 +24,8 @@ proto::Status NodeRegistry::observe(uint8_t nodeId,
     row.rssi = rssi;
     row.snr = snr;
     row.lastSeenMs = seenMs;
+    row.hasEnergy = energy != nullptr;
+    row.energy = energy != nullptr ? *energy : proto::EnergyReading{};
     return proto::Status::Ok;
 }
 

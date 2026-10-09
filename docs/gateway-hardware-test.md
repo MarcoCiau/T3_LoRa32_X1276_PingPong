@@ -43,14 +43,14 @@ Reset the board if the monitor missed the boot lines.
 4. On the gateway monitor, expect:
 
 ```text
-[gateway] telemetry node 1 seq 1 counter 1 rssi ... snr ...
+[gateway] telemetry node 1 seq 1 counter 1 rssi ... snr ... voltage 230.10 current 1.001 power 101 watt-hours 1001 power-factor 0.950 frequency 50.00
 [gateway] ack sent
 ```
 
-`ack sent` is printed only after the SX1276 interrupt says the ACK left the radio. The on-board LED turns on at that moment. The next node report prints a new sequence on this monitor. The node monitor does not print the ACK.
+`ack sent` is printed only after the SX1276 interrupt says the ACK left the radio. The on-board LED turns on at that moment. The next node report prints a new sequence on this monitor. The node monitor does not print the ACK. Ids 2 through 10 print the same kind of line when those nodes check in.
 
 ## Changing the band
 
 Edit `include/board_profile.h`, keep both boards on the same values, and upload `gateway` and `node` again. `kRadioFrequencyMhz` is the value programmed with `setFrequency()`.
 
-Wi-Fi, ThingsBoard, and the ten-node serial lines are in [full-bench-test.md](full-bench-test.md). This image prints node 1 only, and it does not print energy fields.
+Wi-Fi and ThingsBoard are in [full-bench-test.md](full-bench-test.md). This image prints nodes 1 through 10, including the energy fields, and it does not open a socket while the SSID is empty.

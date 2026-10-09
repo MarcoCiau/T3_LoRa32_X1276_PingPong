@@ -15,6 +15,7 @@
 #include "../fakes/fake_random.h"
 #include "../fakes/memory_record_store.h"
 
+#include <energy_payload.h>
 #include <packet_codec.h>
 #include <security.h>
 #include <sequence_manager.h>
@@ -48,10 +49,16 @@ void setStatus(proto::Status actual, proto::Status expected) {
     TEST_ASSERT_EQUAL_INT8(static_cast<int8_t>(expected), static_cast<int8_t>(actual));
 }
 
-void queueFrame(Fixture& fix, proto::MessageType type, uint16_t seq, uint32_t counter, const uint8_t* payload, uint8_t payloadLen) {
+void queueFrame(Fixture& fix,
+                proto::MessageType type,
+                uint16_t seq,
+                uint32_t counter,
+                const uint8_t* payload,
+                uint8_t payloadLen,
+                uint8_t srcId = 1) {
     proto::PacketHeader header = {};
     header.type = type;
-    header.srcId = 1;
+    header.srcId = srcId;
     header.dstId = proto::kGatewayId;
     header.seq = seq;
     header.counter = counter;
@@ -87,6 +94,60 @@ proto::DecodedPacket txPacket(Fixture& fix) {
 void setUp(void) {}
 
 void tearDown(void) {}
+
+void test_energy_body_is_stored_and_an_empty_body_is_still_acked(void) {
+    Fixture fix;
+    proto::EnergyReading reading = {};
+    reading.voltageCentivolts = 23020;
+    reading.currentMilliamps = 1001;
+    reading.powerWatts = 102;
+    reading.energyWattHours = 2001;
+    reading.powerFactorMilli = 950;
+    reading.frequencyCentiHertz = 5000;
+    uint8_t body[proto::kEnergyPayloadBytes] = {};
+    setStatus(proto::encodeEnergy(reading, body, sizeof(body)), proto::Status::Ok);
+    queueFrame(fix, proto::MessageType::Telemetry, 1, 1, body, sizeof(body), 2);
+
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(1, fix.radio.txCount());
+    TEST_ASSERT_EQUAL_UINT8(1, fix.uplink.count);
+    TEST_ASSERT_TRUE(fix.uplink.records[0].hasEnergy);
+    TEST_ASSERT_EQUAL_UINT8(2, fix.uplink.records[0].nodeId);
+    TEST_ASSERT_EQUAL_UINT16(23020, fix.uplink.records[0].energy.voltageCentivolts);
+    TEST_ASSERT_EQUAL_UINT16(1001, fix.uplink.records[0].energy.currentMilliamps);
+    TEST_ASSERT_EQUAL_UINT16(102, fix.uplink.records[0].energy.powerWatts);
+    TEST_ASSERT_EQUAL_UINT32(2001, fix.uplink.records[0].energy.energyWattHours);
+    TEST_ASSERT_EQUAL_UINT16(950, fix.uplink.records[0].energy.powerFactorMilli);
+    TEST_ASSERT_EQUAL_UINT16(5000, fix.uplink.records[0].energy.frequencyCentiHertz);
+
+    gateway::NodeFacts facts = {};
+    TEST_ASSERT_TRUE(fix.registry.lookup(2, &facts));
+    TEST_ASSERT_TRUE(facts.hasEnergy);
+    TEST_ASSERT_EQUAL_UINT16(23020, facts.energy.voltageCentivolts);
+
+    proto::DecodedPacket ack = {};
+    setStatus(fix.codec.decode(fix.radio.txData(), fix.radio.txLen(), 2, false, &ack), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(proto::MessageType::Ack), static_cast<uint8_t>(ack.type));
+    TEST_ASSERT_EQUAL_UINT8(0, ack.payloadLen);
+
+    queueTelemetry(fix, 1, 1);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(2, fix.radio.txCount());
+    TEST_ASSERT_EQUAL_UINT8(2, fix.uplink.count);
+    TEST_ASSERT_FALSE(fix.uplink.records[1].hasEnergy);
+    TEST_ASSERT_EQUAL_UINT8(1, fix.uplink.records[1].nodeId);
+    const proto::DecodedPacket emptyAck = txPacket(fix);
+    TEST_ASSERT_EQUAL_UINT8(0, emptyAck.payloadLen);
+
+    const uint8_t unknown[] = {0x02, 0x00, 0x00};
+    queueFrame(fix, proto::MessageType::Telemetry, 1, 1, unknown, sizeof(unknown), 3);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(3, fix.radio.txCount());
+    TEST_ASSERT_EQUAL_UINT8(3, fix.uplink.count);
+    TEST_ASSERT_FALSE(fix.uplink.records[2].hasEnergy);
+    TEST_ASSERT_TRUE(fix.registry.lookup(3, &facts));
+    TEST_ASSERT_FALSE(facts.hasEnergy);
+}
 
 void test_telemetry_gets_an_empty_ack_and_one_uplink(void) {
     Fixture fix;
@@ -212,6 +273,7 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
     UNITY_BEGIN();
+    RUN_TEST(test_energy_body_is_stored_and_an_empty_body_is_still_acked);
     RUN_TEST(test_telemetry_gets_an_empty_ack_and_one_uplink);
     RUN_TEST(test_pending_command_is_delivered_in_the_ack);
     RUN_TEST(test_duplicate_telemetry_is_acked_without_a_second_uplink);

@@ -3,8 +3,9 @@
  * @brief Gateway composition root. setup() builds the ports. loop() polls in order.
  *
  * Each loop calls the radio coordinator, then one WifiLink::poll, then one
- * MqttService::poll. Empty Wi-Fi and MQTT placeholders leave both down. The
- * ping-pong sketch is a different build and is not this file.
+ * MqttService::poll, then prints any new telemetry for nodes 1 through 10.
+ * Empty Wi-Fi and MQTT placeholders leave both down. The ping-pong sketch is a
+ * different build and is not this file.
  */
 
 #include <Arduino.h>
@@ -60,6 +61,39 @@ public:
         return lo + (esp_random() % span);
     }
 };
+
+/**
+ * @brief Print one accepted telemetry line. Energy fields appear only when the body was version 1.
+ * @param nodeId Sender, 1..10.
+ * @param facts Last packet stored for that node.
+ */
+void printTelemetry(uint8_t nodeId, const gateway::NodeFacts& facts) {
+    Serial.print(F("[gateway] telemetry node "));
+    Serial.print(nodeId);
+    Serial.print(F(" seq "));
+    Serial.print(facts.seq);
+    Serial.print(F(" counter "));
+    Serial.print(facts.counter);
+    Serial.print(F(" rssi "));
+    Serial.print(facts.rssi);
+    Serial.print(F(" snr "));
+    Serial.print(facts.snr);
+    if (facts.hasEnergy) {
+        Serial.print(F(" voltage "));
+        Serial.print(facts.energy.voltageCentivolts / 100.0f, 2);
+        Serial.print(F(" current "));
+        Serial.print(facts.energy.currentMilliamps / 1000.0f, 3);
+        Serial.print(F(" power "));
+        Serial.print(facts.energy.powerWatts);
+        Serial.print(F(" watt-hours "));
+        Serial.print(facts.energy.energyWattHours);
+        Serial.print(F(" power-factor "));
+        Serial.print(facts.energy.powerFactorMilli / 1000.0f, 3);
+        Serial.print(F(" frequency "));
+        Serial.print(facts.energy.frequencyCentiHertz / 100.0f, 2);
+    }
+    Serial.println();
+}
 
 /**
  * @brief Objects the check-in coordinator needs. Built after NVS is open.
@@ -166,21 +200,20 @@ void loop() {
         return;
     }
 
-    gateway::NodeFacts facts = {};
-    static bool heard = false;
-    static uint16_t lastSeq = 0;
-    static uint32_t lastCounter = 0;
-    if (app->registry.lookup(1, &facts) && (!heard || facts.seq != lastSeq || facts.counter != lastCounter)) {
-        heard = true;
-        lastSeq = facts.seq;
-        lastCounter = facts.counter;
-        Serial.print(F("[gateway] telemetry node 1 seq "));
-        Serial.print(facts.seq);
-        Serial.print(F(" counter "));
-        Serial.print(facts.counter);
-        Serial.print(F(" rssi "));
-        Serial.print(facts.rssi);
-        Serial.print(F(" snr "));
-        Serial.println(facts.snr);
+    static bool heard[proto::kMaxNodeId + 1] = {};
+    static uint16_t lastSeq[proto::kMaxNodeId + 1] = {};
+    static uint32_t lastCounter[proto::kMaxNodeId + 1] = {};
+    for (uint8_t nodeId = proto::kMinNodeId; nodeId <= proto::kMaxNodeId; ++nodeId) {
+        gateway::NodeFacts facts = {};
+        if (!app->registry.lookup(nodeId, &facts)) {
+            continue;
+        }
+        if (heard[nodeId] && facts.seq == lastSeq[nodeId] && facts.counter == lastCounter[nodeId]) {
+            continue;
+        }
+        heard[nodeId] = true;
+        lastSeq[nodeId] = facts.seq;
+        lastCounter[nodeId] = facts.counter;
+        printTelemetry(nodeId, facts);
     }
 }

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "energy_payload.h"
 #include "message_types.h"
 
 #include <cstdint>
@@ -21,9 +22,11 @@ struct NodeFacts {
     bool seen;            ///< True after at least one observe() for this id.
     uint32_t counter;     ///< Last accepted replay counter.
     uint16_t seq;         ///< Last accepted telemetry sequence number.
-    float rssi;           ///< RSSI of that packet, in dBm.
-    float snr;            ///< SNR of that packet, in dB.
-    uint32_t lastSeenMs;  ///< Clock value supplied by the caller, in milliseconds.
+    float rssi;                  ///< RSSI of that packet, in dBm.
+    float snr;                   ///< SNR of that packet, in dB.
+    uint32_t lastSeenMs;         ///< Clock value supplied by the caller, in milliseconds.
+    bool hasEnergy;              ///< True when the last telemetry decoded as energy version 1.
+    proto::EnergyReading energy; ///< Valid when hasEnergy is true. Zero when the body was empty or unknown.
 };
 
 /**
@@ -42,9 +45,16 @@ public:
      * @param rssi RSSI in dBm.
      * @param snr SNR in dB.
      * @param seenMs Caller clock in milliseconds.
+     * @param energy Parsed energy body. Null marks the energy fields absent.
      * @return Status::Ok, or BadDestination when @p nodeId is outside 1..10.
      */
-    proto::Status observe(uint8_t nodeId, uint32_t counter, uint16_t seq, float rssi, float snr, uint32_t seenMs);
+    proto::Status observe(uint8_t nodeId,
+                          uint32_t counter,
+                          uint16_t seq,
+                          float rssi,
+                          float snr,
+                          uint32_t seenMs,
+                          const proto::EnergyReading* energy = nullptr);
 
     /**
      * @brief Copy the facts for @p nodeId.

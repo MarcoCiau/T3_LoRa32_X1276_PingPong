@@ -51,4 +51,4 @@ A sniffer set to the same profile should see a 26-byte frame for each report.
 
 Edit `include/board_profile.h`, keep both boards on the same values, and upload `node` and `gateway` again. `kRadioFrequencyMhz` is the value programmed with `setFrequency()`.
 
-The multi-node procedure, including how an id is chosen, is in [full-bench-test.md](full-bench-test.md). This image sends the mock energy body. The gateway does not print those fields yet.
+The multi-node procedure, including how an id is chosen, is in [full-bench-test.md](full-bench-test.md). This image sends the mock energy body. The gateway prints those fields for nodes 1 through 10.
