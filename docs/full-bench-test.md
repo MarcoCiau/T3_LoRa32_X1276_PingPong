@@ -1,8 +1,8 @@
 # Full bench test
 
-This is the lab procedure for one gateway and up to ten nodes. The radio check-in in the current images is real. The energy body is not, until the tasks in [full-bench-tasks.md](architecture/full-bench-tasks.md) are done.
+This is the lab procedure for one gateway and up to ten nodes. Each node sends the 15-byte mock energy body. The gateway still prints node 1 only, without those fields, until F3 and F4 in [full-bench-tasks.md](architecture/full-bench-tasks.md).
 
-Today each node sends an empty telemetry frame (11 bytes, no sensor fields). The gateway prints node 1 only: sequence, counter, RSSI, and SNR. It does not print voltage or energy, and the ThingsBoard JSON does not contain those fields.
+The gateway monitor shows sequence, counter, RSSI, and SNR. It does not print voltage or energy, and the ThingsBoard JSON does not contain those fields yet.
 
 ## What you need
 
@@ -76,7 +76,7 @@ After the energy tasks, that object also carries `voltage`, `current`, `powerW`,
 
 ## Mock energy body
 
-This layout is the target payload inside telemetry. It is not on the air yet. Widths are little-endian. The radio header version stays 1.
+This layout is the telemetry payload on the air. Widths are little-endian. The radio header version stays 1.
 
 | Offset | Width | Field | Unit |
 | --- | --- | --- | --- |

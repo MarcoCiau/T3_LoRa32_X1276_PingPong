@@ -5,6 +5,7 @@
 
 #include <unity.h>
 
+#include <energy_payload.h>
 #include <node_check_in.h>
 #include <packet_codec.h>
 #include <security.h>
@@ -62,6 +63,16 @@ uint16_t txSeq(Fixture& fix) {
     return decoded.seq;
 }
 
+proto::EnergyReading txEnergy(Fixture& fix) {
+    proto::DecodedPacket decoded = {};
+    setStatus(fix.codec.decode(fix.radio.txData(), fix.radio.txLen(), proto::kGatewayId, false, &decoded),
+              proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT8(proto::kEnergyPayloadBytes, decoded.payloadLen);
+    proto::EnergyReading reading = {};
+    setStatus(proto::decodeEnergy(decoded.payload, decoded.payloadLen, &reading), proto::Status::Ok);
+    return reading;
+}
+
 void expireWindow(Fixture& fix) {
     fix.clock.advance(node::NodeCheckIn::kAckWindowMs);
     setStatus(fix.checkIn.poll(), proto::Status::Ok);
@@ -79,6 +90,26 @@ void resendAfterDelay(Fixture& fix) {
 void setUp(void) {}
 
 void tearDown(void) {}
+
+void test_first_report_carries_mock_energy_for_node_1_seq_1(void) {
+    Fixture fix(60000);
+    setStatus(fix.checkIn.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(1, txSeq(fix));
+    const proto::EnergyReading first = txEnergy(fix);
+    TEST_ASSERT_EQUAL_UINT16(23010, first.voltageCentivolts);
+    TEST_ASSERT_EQUAL_UINT16(1001, first.currentMilliamps);
+    TEST_ASSERT_EQUAL_UINT16(101, first.powerWatts);
+    TEST_ASSERT_EQUAL_UINT32(1001, first.energyWattHours);
+    TEST_ASSERT_EQUAL_UINT16(950, first.powerFactorMilli);
+    TEST_ASSERT_EQUAL_UINT16(5000, first.frequencyCentiHertz);
+
+    resendAfterDelay(fix);
+    TEST_ASSERT_EQUAL_UINT16(1, txSeq(fix));
+    const proto::EnergyReading retry = txEnergy(fix);
+    TEST_ASSERT_EQUAL_UINT16(first.voltageCentivolts, retry.voltageCentivolts);
+    TEST_ASSERT_EQUAL_UINT16(first.currentMilliamps, retry.currentMilliamps);
+    TEST_ASSERT_EQUAL_UINT32(first.energyWattHours, retry.energyWattHours);
+}
 
 void test_empty_ack_ends_the_cycle(void) {
     Fixture fix(60000);
@@ -160,6 +191,7 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
     UNITY_BEGIN();
+    RUN_TEST(test_first_report_carries_mock_energy_for_node_1_seq_1);
     RUN_TEST(test_empty_ack_ends_the_cycle);
     RUN_TEST(test_one_retry_then_success);
     RUN_TEST(test_budget_exhaustion_waits_for_the_interval);

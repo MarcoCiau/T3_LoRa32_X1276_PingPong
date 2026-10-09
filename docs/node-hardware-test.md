@@ -32,7 +32,7 @@ Reset the board if the monitor missed the boot lines.
 [node] check-in node 1 every ms 60000
 ```
 
-The first report leaves on the first `loop`. There is no per-packet line on the node monitor. The frame is empty telemetry: version 1, type telemetry, source node 1, destination gateway 0. The first sequence is 1 and the first counter is 1. After an ACK, or after the retry budget, the next report waits 60 seconds.
+The first report leaves on the first `loop`. There is no per-packet line on the node monitor. The frame is telemetry: version 1, type telemetry, source node 1, destination gateway 0, plus the 15-byte mock energy body. The first sequence is 1 and the first counter is 1. A lab frame is 26 bytes. After an ACK, or after the retry budget, the next report waits 60 seconds.
 
 `[node] radio fail` means the SX1276 did not accept the profile. `[node] nvs fail` means the record store did not open. Check the antenna and that this is the `node` environment, not the ping-pong environment.
 
@@ -45,10 +45,10 @@ Flash and power the gateway first. The gateway steps are in [gateway-hardware-te
 3. On the gateway monitor, expect a telemetry line for node 1, then `[gateway] ack sent`.
 4. Leave both boards powered. The node sends again about 60 seconds after each accepted ACK. The gateway prints each new sequence.
 
-A sniffer set to the same profile should see an 11-byte frame for each report.
+A sniffer set to the same profile should see a 26-byte frame for each report.
 
 ## Changing the band
 
 Edit `include/board_profile.h`, keep both boards on the same values, and upload `node` and `gateway` again. `kRadioFrequencyMhz` is the value programmed with `setFrequency()`.
 
-The multi-node procedure, including how an id is chosen, is in [full-bench-test.md](full-bench-test.md). This image still sends an empty telemetry body.
+The multi-node procedure, including how an id is chosen, is in [full-bench-test.md](full-bench-test.md). This image sends the mock energy body. The gateway does not print those fields yet.

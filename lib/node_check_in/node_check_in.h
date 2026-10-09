@@ -101,7 +101,7 @@ private:
 
     /** @brief Which packet transmit() sends, and which Ack the receiver expects. */
     enum class Outbound : uint8_t {
-        Telemetry,      ///< Empty telemetry. The Ack may carry a command.
+        Telemetry,      ///< Mock energy body. The Ack may carry a command.
         CommandResult,  ///< Result for one command. The Ack must be empty.
     };
 

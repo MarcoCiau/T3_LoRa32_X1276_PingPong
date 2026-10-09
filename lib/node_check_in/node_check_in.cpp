@@ -18,6 +18,7 @@
 #include "security.h"
 #include "sequence_manager.h"
 #include "store_keys.h"
+#include "telemetry_service.h"
 
 namespace node {
 namespace {
@@ -198,7 +199,13 @@ proto::Status NodeCheckIn::transmit(uint32_t now) {
     const uint8_t* payloadPtr = nullptr;
     proto::MessageType type = proto::MessageType::Telemetry;
     const bool authOn = auth_.tagLen() != 0;
-    if (outbound_ == Outbound::CommandResult) {
+    if (outbound_ == Outbound::Telemetry) {
+        const proto::Status wrote = fillMockEnergy(nodeId_, seqNum_, payload, sizeof(payload), &payloadLen);
+        if (wrote != proto::Status::Ok) {
+            return wrote;
+        }
+        payloadPtr = payload;
+    } else if (outbound_ == Outbound::CommandResult) {
         type = proto::MessageType::CommandResult;
         const proto::Status wrote = codec_.writeCommandResult(resultCommandId_,
                                                                resultStatus_,
