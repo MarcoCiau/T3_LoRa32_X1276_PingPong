@@ -52,3 +52,5 @@ Reset the board if the monitor missed the boot lines.
 ## Changing the band
 
 Edit `include/board_profile.h`, keep both boards on the same values, and upload `gateway` and `node` again. `kRadioFrequencyMhz` is the value programmed with `setFrequency()`.
+
+Wi-Fi, ThingsBoard, and the ten-node serial lines are in [full-bench-test.md](full-bench-test.md). This image prints node 1 only, and it does not print energy fields.

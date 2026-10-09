@@ -50,3 +50,5 @@ A sniffer set to the same profile should see an 11-byte frame for each report.
 ## Changing the band
 
 Edit `include/board_profile.h`, keep both boards on the same values, and upload `node` and `gateway` again. `kRadioFrequencyMhz` is the value programmed with `setFrequency()`.
+
+The multi-node procedure, including how an id is chosen, is in [full-bench-test.md](full-bench-test.md). This image still sends an empty telemetry body.
