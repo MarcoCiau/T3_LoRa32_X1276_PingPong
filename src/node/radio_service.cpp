@@ -135,6 +135,9 @@ proto::Status RadioLibRadio::startReceive() {
     if (phase_ == Phase::Transmitting) {
         return proto::Status::Busy;
     }
+    if (phase_ == Phase::Listening || phase_ == Phase::PacketReady) {
+        return proto::Status::Ok;
+    }
     radioIrqSeen = false;
     const int16_t state = radio_.startReceive();
     if (state != RADIOLIB_ERR_NONE) {

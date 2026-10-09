@@ -2,7 +2,7 @@
  * @file storage.cpp
  * @brief Gateway storage pulls in the NVS record-store adapter.
  *
- * The composition root calls PreferencesRecordStore::open() in a later task.
+ * The composition root in gateway_main.cpp calls PreferencesRecordStore::open().
  */
 
 #include "storage.h"

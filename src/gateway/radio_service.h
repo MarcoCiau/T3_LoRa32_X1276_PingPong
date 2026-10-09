@@ -32,7 +32,9 @@ class OutboundBuffer;
  * the node's oldest pending command. The same sequence is Acked again and does not
  * append a second uplink or deliver another command. A CommandResult updates the
  * queue and appends one result uplink. Invalid packets are not answered.
- * poll() does not open a socket and does not call delay().
+ * poll() does not open a socket and does not call delay(). startTransmit of the Ack
+ * returns while the radio is still sending. The next poll() arms the receiver
+ * after that transmit finishes.
  */
 class RadioService {
 public:

@@ -202,7 +202,7 @@ proto::Status RadioService::sendAck(uint8_t nodeId, bool hasCommand, const Queue
         return sent;
     }
     txCounter_ += 1;
-    return radio_.startReceive();
+    return proto::Status::Ok;
 }
 
 }  // namespace gateway

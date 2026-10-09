@@ -40,7 +40,9 @@ A sniffer set to the same profile should see that 11-byte frame. The hex line un
 
 ## Check-in with the gateway
 
-1. Flash and power the gateway first, so it is already listening.
+Flash and power the gateway first. The gateway steps are in [gateway-hardware-test.md](gateway-hardware-test.md).
+
+1. Leave the gateway on `[gateway] listening`.
 2. Reset the node. It transmits once per reset.
 3. On the node monitor, `listening` should be followed by `rx bytes` when an ACK arrives. The RSSI and SNR on that line are the node's view of the gateway.
 4. Press reset on the node to send the beacon again. This image does not repeat it on a timer.

@@ -87,8 +87,9 @@ void loop() {
     radio.poll();
     if (radio.takeTransmitDone()) {
         digitalWrite(board::kBoardLedPin, HIGH);
+        const proto::Status listening = radio.startReceive();
         Serial.println(F("[node] transmission finished"));
-        if (radio.startReceive() == proto::Status::Ok) {
+        if (listening == proto::Status::Ok) {
             Serial.println(F("[node] listening"));
         } else {
             Serial.println(F("[node] listen fail"));

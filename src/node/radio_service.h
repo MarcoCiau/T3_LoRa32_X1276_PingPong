@@ -49,7 +49,12 @@ public:
      */
     proto::Status startTransmit(const uint8_t* data, size_t len) override;
 
-    /** @brief Arm the receiver. @return Status::Ok, or BadPayload when RadioLib rejects it. */
+    /**
+     * @brief Arm the receiver.
+     *
+     * A second call while already listening leaves a waiting packet in place.
+     * @return Status::Ok, Busy while a transmit is on the air, or BadPayload when RadioLib rejects it.
+     */
     proto::Status startReceive() override;
 
     /**
