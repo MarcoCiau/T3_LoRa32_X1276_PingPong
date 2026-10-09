@@ -39,7 +39,7 @@ Reset the board if the monitor missed the boot lines.
 
 1. Leave the gateway powered and on `[gateway] listening`.
 2. Flash the other board with the `node` environment if that image is not already on it. See [node-hardware-test.md](node-hardware-test.md).
-3. Reset the node. It sends one telemetry frame per reset.
+3. Reset the node. The first report leaves as soon as its loop starts. Later reports wait 60 seconds after an ACK.
 4. On the gateway monitor, expect:
 
 ```text
@@ -47,11 +47,7 @@ Reset the board if the monitor missed the boot lines.
 [gateway] ack sent
 ```
 
-`ack sent` is printed only after the SX1276 interrupt says the ACK left the radio. The on-board LED turns on at that moment.
-
-5. On the node monitor, after `listening`, expect `rx bytes` with an RSSI and SNR. That line is the node's view of the ACK.
-
-Reset the node to repeat the exchange. The node image sends only once per reset.
+`ack sent` is printed only after the SX1276 interrupt says the ACK left the radio. The on-board LED turns on at that moment. The next node report prints a new sequence on this monitor. The node monitor does not print the ACK.
 
 ## Changing the band
 

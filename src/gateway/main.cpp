@@ -1,10 +1,10 @@
 /**
- * @file gateway_main.cpp
- * @brief Gateway bring-up: listen, and answer a node check-in with an Ack.
+ * @file main.cpp
+ * @brief Gateway composition root. setup() builds the ports. loop() polls in order.
  *
- * The radio step does not publish MQTT. Wi-Fi poll and one MQTT poll run after it and
- * return without waiting for the association or the broker. Empty Wi-Fi and MQTT
- * placeholders leave both down.
+ * Each loop calls the radio coordinator, then one WifiLink::poll, then one
+ * MqttService::poll. Empty Wi-Fi and MQTT placeholders leave both down. The
+ * ping-pong sketch is a different build and is not this file.
  */
 
 #include <Arduino.h>
@@ -147,34 +147,33 @@ void setup() {
 }
 
 void loop() {
-    app->radio.poll();
+    const proto::Status stepped = app->coordinator.poll();
+    app->wifi.poll();
+    app->mqtt.poll();
     if (app->radio.takeTransmitDone()) {
         digitalWrite(board::kBoardLedPin, HIGH);
         Serial.println(F("[gateway] ack sent"));
     }
-
-    const proto::Status stepped = app->coordinator.poll();
-    app->wifi.poll();
-    app->mqtt.poll();
-    if (stepped == proto::Status::Busy || stepped == proto::Status::Ok) {
-        gateway::NodeFacts facts = {};
-        static bool heard = false;
-        static uint16_t lastSeq = 0;
-        static uint32_t lastCounter = 0;
-        if (app->registry.lookup(1, &facts) && (!heard || facts.seq != lastSeq || facts.counter != lastCounter)) {
-            heard = true;
-            lastSeq = facts.seq;
-            lastCounter = facts.counter;
-            Serial.print(F("[gateway] telemetry node 1 seq "));
-            Serial.print(facts.seq);
-            Serial.print(F(" counter "));
-            Serial.print(facts.counter);
-            Serial.print(F(" rssi "));
-            Serial.print(facts.rssi);
-            Serial.print(F(" snr "));
-            Serial.println(facts.snr);
-        }
+    if (stepped != proto::Status::Ok && stepped != proto::Status::Busy) {
+        Serial.println(F("[gateway] poll fail"));
         return;
     }
-    Serial.println(F("[gateway] poll fail"));
+
+    gateway::NodeFacts facts = {};
+    static bool heard = false;
+    static uint16_t lastSeq = 0;
+    static uint32_t lastCounter = 0;
+    if (app->registry.lookup(1, &facts) && (!heard || facts.seq != lastSeq || facts.counter != lastCounter)) {
+        heard = true;
+        lastSeq = facts.seq;
+        lastCounter = facts.counter;
+        Serial.print(F("[gateway] telemetry node 1 seq "));
+        Serial.print(facts.seq);
+        Serial.print(F(" counter "));
+        Serial.print(facts.counter);
+        Serial.print(F(" rssi "));
+        Serial.print(facts.rssi);
+        Serial.print(F(" snr "));
+        Serial.println(facts.snr);
+    }
 }

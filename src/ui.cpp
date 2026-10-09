@@ -149,3 +149,38 @@
 //     display.drawStr(0, 62, status_);
 //     display.sendBuffer();
 // }
+
+/**
+ * @file ui.cpp
+ * @brief Ping-pong display stand-in. The SSD1306 driver above is not linked.
+ *
+ * The radio sketch still calls Ui. These methods return without painting so the
+ * bring-up image links while the panel stays off.
+ */
+
+#include "ui.h"
+
+Ui ui;
+
+/** @brief Report the panel as ready. The sketch continues without a display. */
+bool Ui::begin() {
+    return true;
+}
+
+/** @brief Ignore @p role. The panel is off. */
+void Ui::setRole(const char* /*role*/) {}
+
+/** @brief Ignore @p status. The panel is off. */
+void Ui::setStatus(const char* /*status*/) {}
+
+/** @brief Ignore @p payload. The panel is off. */
+void Ui::onTransmit(const char* /*payload*/) {}
+
+/** @brief Ignore @p state. The panel is off. */
+void Ui::onTransmitDone(int /*state*/) {}
+
+/** @brief Ignore a received line. The panel is off. */
+void Ui::onReceive(const char* /*payload*/, float /*rssi*/, float /*snr*/) {}
+
+/** @brief Ignore @p state. The panel is off. */
+void Ui::onReceiveError(int /*state*/) {}

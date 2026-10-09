@@ -15,8 +15,10 @@
  *
  * begin() programs the lab profile from board_profile.h, including an explicit
  * setFrequency() call. An interrupt sets a flag. poll() is what reads that flag.
- * readPacket() also checks it, so a later check-in loop can call the port alone.
- * This class does not format JSON and does not use the OLED.
+ * readPacket() also checks it, so the check-in loop can call the port alone.
+ * startReceive() during a transmit does not abort that packet. The receiver is
+ * armed when poll() sees the transmit-done interrupt. This class does not format
+ * JSON and does not use the OLED.
  */
 class RadioLibRadio final : public RadioPort {
 public:
@@ -53,7 +55,9 @@ public:
      * @brief Arm the receiver.
      *
      * A second call while already listening leaves a waiting packet in place.
-     * @return Status::Ok, Busy while a transmit is on the air, or BadPayload when RadioLib rejects it.
+     * A call while a transmit is on the air returns Ok and does not touch the
+     * modem. poll() arms the receiver after that transmit finishes.
+     * @return Status::Ok, or BadPayload when RadioLib rejects the arm.
      */
     proto::Status startReceive() override;
 
@@ -81,10 +85,15 @@ private:
     /** @brief Map a RadioLib status to Status::Ok or BadPayload. */
     static proto::Status fromRadio(int16_t state);
 
+    /** @brief Call RadioLib startReceive from Idle. Does not run during a transmit. */
+    proto::Status armReceive();
+
     Module module_;
     SX1276 radio_;
     Phase phase_ = Phase::Idle;
     bool txDone_ = false;
+    /** @brief startReceive() arrived while a transmit was still on the air. */
+    bool listenAfterTx_ = false;
     float rssi_ = 0.0f;
     float snr_ = 0.0f;
     uint8_t txBuf_[proto::kMaxPhyBytes] = {};

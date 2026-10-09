@@ -84,6 +84,7 @@ proto::Status RadioLibRadio::begin() {
     radioIrqSeen = false;
     phase_ = Phase::Idle;
     txDone_ = false;
+    listenAfterTx_ = false;
     return proto::Status::Ok;
 }
 
@@ -97,6 +98,10 @@ void RadioLibRadio::poll() {
         (void)radio_.finishTransmit();
         phase_ = Phase::Idle;
         txDone_ = true;
+        if (listenAfterTx_) {
+            listenAfterTx_ = false;
+            (void)armReceive();
+        }
         return;
     }
     if (phase_ == Phase::Listening) {
@@ -122,6 +127,7 @@ proto::Status RadioLibRadio::startTransmit(const uint8_t* data, size_t len) {
     std::memcpy(txBuf_, data, len);
     radioIrqSeen = false;
     txDone_ = false;
+    listenAfterTx_ = false;
     const int16_t state = radio_.startTransmit(txBuf_, len);
     if (state != RADIOLIB_ERR_NONE) {
         phase_ = Phase::Idle;
@@ -133,11 +139,16 @@ proto::Status RadioLibRadio::startTransmit(const uint8_t* data, size_t len) {
 
 proto::Status RadioLibRadio::startReceive() {
     if (phase_ == Phase::Transmitting) {
-        return proto::Status::Busy;
+        listenAfterTx_ = true;
+        return proto::Status::Ok;
     }
     if (phase_ == Phase::Listening || phase_ == Phase::PacketReady) {
         return proto::Status::Ok;
     }
+    return armReceive();
+}
+
+proto::Status RadioLibRadio::armReceive() {
     radioIrqSeen = false;
     const int16_t state = radio_.startReceive();
     if (state != RADIOLIB_ERR_NONE) {

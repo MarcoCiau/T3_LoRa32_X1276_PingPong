@@ -1,6 +1,6 @@
 # Node hardware test
 
-Use this after T13 is flashed on the gateway board. The node image sends one telemetry frame at boot, then listens. The bring-up ping-pong image is a different build and is not this test.
+Use this with the gateway image already listening. The node image checks in on a 60 second interval: one empty telemetry frame, then a short listen for the ACK. The bring-up ping-pong image is a different build and is not this test.
 
 ## What you need
 
@@ -23,31 +23,29 @@ In the PlatformIO IDE, select the `node` environment, upload, and open the seria
 
 Reset the board if the monitor missed the boot lines.
 
-## Lines that mean the radio transmitted
+## Lines that mean the node is ready
 
 ```text
 [node] radio begin
 [node] freq MHz 434.00
 [node] bw kHz 125.00 sf 9 cr 4/7 sync 0x12 power dBm 17
-[node] tx bytes 11
-[node] transmission finished
-[node] listening
+[node] check-in node 1 every ms 60000
 ```
 
-`transmission finished` is printed only after the SX1276 interrupt says the packet left the radio. The on-board LED turns on at that moment. `tx bytes 11` is one empty telemetry frame: version 1, type telemetry, source node 1, destination gateway 0, sequence 1, counter 1.
+The first report leaves on the first `loop`. There is no per-packet line on the node monitor. The frame is empty telemetry: version 1, type telemetry, source node 1, destination gateway 0. The first sequence is 1 and the first counter is 1. After an ACK, or after the retry budget, the next report waits 60 seconds.
 
-A sniffer set to the same profile should see that 11-byte frame. The hex line under `tx bytes` is the exact payload.
+`[node] radio fail` means the SX1276 did not accept the profile. `[node] nvs fail` means the record store did not open. Check the antenna and that this is the `node` environment, not the ping-pong environment.
 
 ## Check-in with the gateway
 
 Flash and power the gateway first. The gateway steps are in [gateway-hardware-test.md](gateway-hardware-test.md).
 
 1. Leave the gateway on `[gateway] listening`.
-2. Reset the node. It transmits once per reset.
-3. On the node monitor, `listening` should be followed by `rx bytes` when an ACK arrives. The RSSI and SNR on that line are the node's view of the gateway.
-4. Press reset on the node to send the beacon again. This image does not repeat it on a timer.
+2. Reset the node and wait for `[node] check-in node 1 every ms 60000`.
+3. On the gateway monitor, expect a telemetry line for node 1, then `[gateway] ack sent`.
+4. Leave both boards powered. The node sends again about 60 seconds after each accepted ACK. The gateway prints each new sequence.
 
-`[node] radio fail` means the SX1276 did not accept the profile. Check the antenna and that this is the `node` environment, not the ping-pong environment.
+A sniffer set to the same profile should see an 11-byte frame for each report.
 
 ## Changing the band
 
