@@ -1,3 +1,10 @@
+/**
+ * @file packet_codec.cpp
+ * @brief Little-endian frame layout for PacketCodec.
+ *
+ * Auth tag bytes are copied. They are not verified.
+ */
+
 #include "packet_codec.h"
 
 #include <cstring>
@@ -5,14 +12,18 @@
 namespace proto {
 namespace {
 
+/** @brief Ack command prefix: command_id, command_type, command_len. */
 constexpr uint8_t kCommandPrefixBytes = 6;
+/** @brief CommandResult prefix: command_id and status. */
 constexpr uint8_t kResultPrefixBytes = 5;
 
+/** @brief Store @p value little-endian at @p p. @p p must hold 2 bytes. */
 void writeU16(uint8_t* p, uint16_t value) {
     p[0] = static_cast<uint8_t>(value);
     p[1] = static_cast<uint8_t>(value >> 8);
 }
 
+/** @brief Store @p value little-endian at @p p. @p p must hold 4 bytes. */
 void writeU32(uint8_t* p, uint32_t value) {
     p[0] = static_cast<uint8_t>(value);
     p[1] = static_cast<uint8_t>(value >> 8);
@@ -20,10 +31,12 @@ void writeU32(uint8_t* p, uint32_t value) {
     p[3] = static_cast<uint8_t>(value >> 24);
 }
 
+/** @brief Read a little-endian uint16 from @p p. */
 uint16_t readU16(const uint8_t* p) {
     return static_cast<uint16_t>(p[0] | (static_cast<uint16_t>(p[1]) << 8));
 }
 
+/** @brief Read a little-endian uint32 from @p p. */
 uint32_t readU32(const uint8_t* p) {
     return static_cast<uint32_t>(p[0]) |
            (static_cast<uint32_t>(p[1]) << 8) |
@@ -31,6 +44,7 @@ uint32_t readU32(const uint8_t* p) {
            (static_cast<uint32_t>(p[3]) << 24);
 }
 
+/** @brief True when @p type is Telemetry, Ack, CommandResult, or Heartbeat. */
 bool knownType(uint8_t type) {
     return type == static_cast<uint8_t>(MessageType::Telemetry) ||
            type == static_cast<uint8_t>(MessageType::Ack) ||
@@ -38,6 +52,10 @@ bool knownType(uint8_t type) {
            type == static_cast<uint8_t>(MessageType::Heartbeat);
 }
 
+/**
+ * @brief Maximum payload bytes that still fit in proto::kMaxPhyBytes.
+ * @param authOn Reserves proto::kAuthTagBytes when true.
+ */
 uint8_t payloadBudget(bool authOn) {
     const uint8_t tag = authOn ? kAuthTagBytes : 0;
     return static_cast<uint8_t>(kMaxPhyBytes - kHeaderBytes - tag);

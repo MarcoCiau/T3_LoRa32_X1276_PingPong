@@ -1,3 +1,8 @@
+/**
+ * @file test_message_types.cpp
+ * @brief Locks draft protocol constants against the architecture notes.
+ */
+
 #include <unity.h>
 
 #include <message_types.h>

@@ -1,3 +1,8 @@
+/**
+ * @file test_sequence_manager.cpp
+ * @brief Covers the retry budget, inclusive jitter bounds, and duplicate sequence numbers.
+ */
+
 #include <unity.h>
 
 #include <sequence_manager.h>

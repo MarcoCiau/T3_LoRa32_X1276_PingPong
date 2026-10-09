@@ -1,3 +1,8 @@
+/**
+ * @file test_scaffold.cpp
+ * @brief Proves the native Unity environment compiles the scaffold headers.
+ */
+
 #include <unity.h>
 
 #include <clock_port.h>

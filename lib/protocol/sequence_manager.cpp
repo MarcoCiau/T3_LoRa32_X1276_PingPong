@@ -1,3 +1,10 @@
+/**
+ * @file sequence_manager.cpp
+ * @brief Per-peer seq allocation, retry budget, and duplicate detection.
+ *
+ * Does not persist a replay counter and does not block on a timer.
+ */
+
 #include "sequence_manager.h"
 
 #include "random_port.h"

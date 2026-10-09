@@ -1,3 +1,8 @@
+/**
+ * @file test_header_codec.cpp
+ * @brief Round-trips the frame header and rejects truncated, mismatched, and unknown packets.
+ */
+
 #include <unity.h>
 
 #include <packet_codec.h>

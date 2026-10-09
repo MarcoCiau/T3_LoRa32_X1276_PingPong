@@ -1,3 +1,8 @@
+/**
+ * @file test_payload_codec.cpp
+ * @brief Covers empty ACKs, commands inside ACKs, command results, and opaque telemetry.
+ */
+
 #include <unity.h>
 
 #include <packet_codec.h>
