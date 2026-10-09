@@ -1,6 +1,6 @@
 # Full bench test
 
-This is the lab procedure for one gateway and up to ten nodes. Each node sends the 15-byte mock energy body. The gateway prints that body for every id from 1 to 10. The ThingsBoard JSON does not contain those fields yet. That is F4 in [full-bench-tasks.md](architecture/full-bench-tasks.md).
+This is the lab procedure for one gateway and up to ten nodes. Each node sends the 15-byte mock energy body. The gateway prints that body for every id from 1 to 10. When Wi-Fi and MQTT are up, the same fields are published to ThingsBoard.
 
 ## What you need
 
@@ -64,13 +64,13 @@ Set these, then flash the gateway again:
 
 The port stays `1883`. The access token is the MQTT username. The password stays empty. Telemetry is published to `v1/devices/me/telemetry`. The radio loop does not wait for the association or the broker.
 
-Today a connected gateway publishes one JSON object per accepted uplink, without energy keys:
+A connected gateway publishes one JSON object per accepted uplink. `energyWh` is kilowatt-hours. The other energy values are volts, amps, watts, a 0–1 factor, and hertz:
 
 ```json
-{"node":1,"kind":"telemetry","seq":1,"counter":1,"rssi":-40.0,"snr":8.0}
+{"node":1,"kind":"telemetry","seq":1,"counter":1,"rssi":-40.0,"snr":8.0,"voltage":230.10,"current":1.001,"powerW":101.0,"energyWh":1.001,"powerFactor":0.950,"frequencyHz":50.00}
 ```
 
-After F4, that object also carries `voltage`, `current`, `powerW`, `energyWh`, `powerFactor`, and `frequencyHz`. The serial line is still printed when Wi-Fi is up. Publishing happens only after `WifiLink` is associated and the MQTT session is up. One uplink record leaves the queue per `loop`.
+An uplink without an energy body omits those keys. The serial line is still printed when Wi-Fi is up. Publishing happens only after `WifiLink` is associated and the MQTT session is up. One uplink record leaves the queue per `loop`. The document is built in `buildThingsBoardPayload()`.
 
 ## Mock energy body
 

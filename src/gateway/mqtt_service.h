@@ -53,7 +53,7 @@
 namespace gateway {
 
 /** @brief Bytes reserved for one uplink JSON document, including the terminating NUL. */
-constexpr size_t kMqttJsonBytes = 160;
+constexpr size_t kMqttJsonBytes = 256;
 
 /** @brief Bytes copied from one downlink RPC payload. */
 constexpr size_t kMqttDownlinkBytes = 192;
@@ -138,17 +138,28 @@ public:
 };
 
 /**
- * @brief Build one ThingsBoard telemetry JSON object for @p record.
+ * @brief Build the JSON document published to LP_MQTT_TELEMETRY_TOPIC.
  *
- * Telemetry becomes `{"node":N,"kind":"telemetry","seq":S,"counter":C,"rssi":R,"snr":N}`.
- * A command result becomes `{"node":N,"kind":"result","commandId":I,"status":S}`.
- * rssi and snr use one decimal place. The document is written into a caller buffer.
+ * This is the only place that chooses the ThingsBoard keys. Change this function
+ * to change the payload. Telemetry keeps node, kind, seq, counter, rssi, and snr.
+ * When @p record has an energy body, the document also carries voltage (volts),
+ * current (amps), powerW (watts), energyWh (kilowatt-hours), powerFactor (0–1),
+ * and frequencyHz (hertz). A record without that body omits those keys. A command
+ * result stays `{"node":N,"kind":"result","commandId":I,"status":S}`.
  *
  * @param record Accepted uplink.
  * @param out Receives the JSON and a terminating NUL. Required.
  * @param cap Bytes available at @p out, including the NUL.
  * @param written Receives the JSON length without the NUL. Required.
  * @return Status::Ok, or BadPayload when @p out is missing or @p cap is too small.
+ */
+proto::Status buildThingsBoardPayload(const UplinkRecord& record, char* out, size_t cap, size_t* written);
+
+/**
+ * @brief Same document as buildThingsBoardPayload().
+ *
+ * publish and the host tests call that function. This name remains for callers
+ * that already format an uplink.
  */
 proto::Status formatUplinkJson(const UplinkRecord& record, char* out, size_t cap, size_t* written);
 

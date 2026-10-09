@@ -2,8 +2,8 @@
  * @file mqtt_service.cpp
  * @brief ThingsBoard JSON mapping and the one-record MQTT poll.
  *
- * formatUplinkJson() and parseRpcCommand() do not open a socket. poll() starts a
- * session and returns; it does not wait for a CONNACK and it does not call the radio.
+ * buildThingsBoardPayload() and parseRpcCommand() do not open a socket. poll() starts
+ * a session and returns; it does not wait for a CONNACK and it does not call the radio.
  */
 
 #include "mqtt_service.h"
@@ -37,6 +37,32 @@ bool appendU32(char* out, size_t cap, size_t* used, uint32_t value) {
             return false;
         }
         out[(*used)++] = digits[--count];
+    }
+    return true;
+}
+
+/**
+ * @brief Append @p numerator / @p scale with the scale's decimal places.
+ *
+ * scale 100 writes two places. The fraction is zero-padded. No rounding.
+ */
+bool appendScaled(char* out, size_t cap, size_t* used, uint32_t numerator, uint32_t scale) {
+    if (scale < 10) {
+        return false;
+    }
+    if (!appendU32(out, cap, used, numerator / scale)) {
+        return false;
+    }
+    if (*used + 1 >= cap) {
+        return false;
+    }
+    out[(*used)++] = '.';
+    uint32_t fraction = numerator % scale;
+    for (uint32_t place = scale / 10; place > 0; place /= 10) {
+        if (*used + 1 >= cap) {
+            return false;
+        }
+        out[(*used)++] = static_cast<char>('0' + ((fraction / place) % 10));
     }
     return true;
 }
@@ -175,7 +201,7 @@ bool parseHexBody(const char** cursor, const char* end, uint8_t* body, uint8_t* 
 
 }  // namespace
 
-proto::Status formatUplinkJson(const UplinkRecord& record, char* out, size_t cap, size_t* written) {
+proto::Status buildThingsBoardPayload(const UplinkRecord& record, char* out, size_t cap, size_t* written) {
     if (out == nullptr || written == nullptr || cap == 0) {
         return proto::Status::BadPayload;
     }
@@ -191,6 +217,21 @@ proto::Status formatUplinkJson(const UplinkRecord& record, char* out, size_t cap
         ok = ok && appendFloat1(out, cap, &used, record.rssi);
         ok = ok && appendText(out, cap, &used, ",\"snr\":");
         ok = ok && appendFloat1(out, cap, &used, record.snr);
+        if (record.hasEnergy) {
+            const proto::EnergyReading& energy = record.energy;
+            ok = ok && appendText(out, cap, &used, ",\"voltage\":");
+            ok = ok && appendScaled(out, cap, &used, energy.voltageCentivolts, 100);
+            ok = ok && appendText(out, cap, &used, ",\"current\":");
+            ok = ok && appendScaled(out, cap, &used, energy.currentMilliamps, 1000);
+            ok = ok && appendText(out, cap, &used, ",\"powerW\":");
+            ok = ok && appendScaled(out, cap, &used, static_cast<uint32_t>(energy.powerWatts) * 10u, 10);
+            ok = ok && appendText(out, cap, &used, ",\"energyWh\":");
+            ok = ok && appendScaled(out, cap, &used, energy.energyWattHours, 1000);
+            ok = ok && appendText(out, cap, &used, ",\"powerFactor\":");
+            ok = ok && appendScaled(out, cap, &used, energy.powerFactorMilli, 1000);
+            ok = ok && appendText(out, cap, &used, ",\"frequencyHz\":");
+            ok = ok && appendScaled(out, cap, &used, energy.frequencyCentiHertz, 100);
+        }
     } else if (record.kind == UplinkKind::CommandResult) {
         ok = ok && appendText(out, cap, &used, ",\"kind\":\"result\",\"commandId\":");
         ok = ok && appendU32(out, cap, &used, record.commandId);
@@ -206,6 +247,10 @@ proto::Status formatUplinkJson(const UplinkRecord& record, char* out, size_t cap
     out[used] = '\0';
     *written = used;
     return proto::Status::Ok;
+}
+
+proto::Status formatUplinkJson(const UplinkRecord& record, char* out, size_t cap, size_t* written) {
+    return buildThingsBoardPayload(record, out, cap, written);
 }
 
 proto::Status parseRpcCommand(const char* json, size_t len, RpcCommand* out) {
@@ -297,7 +342,7 @@ void MqttService::publishOneUplink() {
     }
     char json[kMqttJsonBytes];
     size_t written = 0;
-    if (formatUplinkJson(record, json, sizeof json, &written) != proto::Status::Ok ||
+    if (buildThingsBoardPayload(record, json, sizeof json, &written) != proto::Status::Ok ||
         !client_.publish(settings_.telemetryTopic, json, static_cast<uint16_t>(written))) {
         uplink_.push(record);
     }

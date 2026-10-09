@@ -102,6 +102,30 @@ void test_telemetry_json_matches_the_thingsboard_object(void) {
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(std::strlen(json)), static_cast<uint32_t>(written));
 }
 
+void test_energy_json_matches_the_thingsboard_object(void) {
+    gateway::UplinkRecord record = telemetryRecord();
+    record.seq = 1;
+    record.counter = 1;
+    record.rssi = -40.0f;
+    record.snr = 8.0f;
+    record.hasEnergy = true;
+    record.energy.voltageCentivolts = 23010;
+    record.energy.currentMilliamps = 1001;
+    record.energy.powerWatts = 101;
+    record.energy.energyWattHours = 1001;
+    record.energy.powerFactorMilli = 950;
+    record.energy.frequencyCentiHertz = 5000;
+    char json[gateway::kMqttJsonBytes];
+    size_t written = 0;
+    setStatus(gateway::buildThingsBoardPayload(record, json, sizeof json, &written), proto::Status::Ok);
+    const char* expected =
+        "{\"node\":1,\"kind\":\"telemetry\",\"seq\":1,\"counter\":1,\"rssi\":-40.0,\"snr\":8.0,"
+        "\"voltage\":230.10,\"current\":1.001,\"powerW\":101.0,\"energyWh\":1.001,"
+        "\"powerFactor\":0.950,\"frequencyHz\":50.00}";
+    TEST_ASSERT_EQUAL_STRING(expected, json);
+    TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(std::strlen(json)), static_cast<uint32_t>(written));
+}
+
 void test_result_json_matches_the_thingsboard_object(void) {
     gateway::UplinkRecord record = {};
     record.kind = gateway::UplinkKind::CommandResult;
@@ -266,6 +290,7 @@ int main(int argc, char** argv) {
     (void)argv;
     UNITY_BEGIN();
     RUN_TEST(test_telemetry_json_matches_the_thingsboard_object);
+    RUN_TEST(test_energy_json_matches_the_thingsboard_object);
     RUN_TEST(test_result_json_matches_the_thingsboard_object);
     RUN_TEST(test_short_buffer_is_rejected);
     RUN_TEST(test_rpc_params_become_a_command);
