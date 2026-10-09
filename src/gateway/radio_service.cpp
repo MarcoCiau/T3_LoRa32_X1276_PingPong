@@ -17,6 +17,43 @@
 #include "sequence_manager.h"
 
 namespace gateway {
+namespace {
+
+/**
+ * @brief Encode one frame and append the auth tag when @p auth requires one.
+ *
+ * The tag covers the header and payload. LabAuthOff adds no bytes.
+ * verify() of a received frame still happens before the replay counter is stored.
+ */
+proto::Status seal(proto::PacketCodec& codec,
+                   proto::AuthPort& auth,
+                   const proto::PacketHeader& header,
+                   const uint8_t* payload,
+                   uint8_t payloadLen,
+                   uint8_t* packet,
+                   size_t cap,
+                   size_t* packetLen) {
+    const bool authOn = auth.tagLen() != 0;
+    uint8_t tag[proto::kAuthTagBytes];
+    const uint8_t* tagPtr = nullptr;
+    if (authOn) {
+        uint8_t frame[proto::kMaxPhyBytes];
+        size_t frameLen = 0;
+        const proto::Status bare =
+            codec.encode(header, payload, payloadLen, false, nullptr, frame, sizeof(frame), &frameLen);
+        if (bare != proto::Status::Ok) {
+            return bare;
+        }
+        const proto::Status signedFrame = auth.sign(frame, frameLen, tag);
+        if (signedFrame != proto::Status::Ok) {
+            return signedFrame;
+        }
+        tagPtr = tag;
+    }
+    return codec.encode(header, payload, payloadLen, authOn, tagPtr, packet, cap, packetLen);
+}
+
+}  // namespace
 
 RadioService::RadioService(RadioPort& radio,
                            ClockPort& clock,
@@ -61,7 +98,11 @@ proto::Status RadioService::handle(const uint8_t* data, size_t len, float rssi, 
     if (codec_.decode(data, len, proto::kGatewayId, authOn, &decoded) != proto::Status::Ok) {
         return proto::Status::Ok;
     }
-    if (auth_.verify(data, len, decoded.tag) != proto::Status::Ok) {
+    if (authOn && len < auth_.tagLen()) {
+        return proto::Status::Ok;
+    }
+    const size_t frameLen = authOn ? len - auth_.tagLen() : len;
+    if (auth_.verify(data, frameLen, decoded.tag) != proto::Status::Ok) {
         return proto::Status::Ok;
     }
     if (decoded.srcId < proto::kMinNodeId || decoded.srcId > proto::kMaxNodeId) {
@@ -189,13 +230,9 @@ proto::Status RadioService::sendAck(uint8_t nodeId, bool hasCommand, const Queue
     uint8_t packet[proto::kMaxPhyBytes] = {};
     size_t packetLen = 0;
     const proto::Status encoded =
-        codec_.encode(header, payloadPtr, payloadLen, authOn, nullptr, packet, sizeof(packet), &packetLen);
+        seal(codec_, auth_, header, payloadPtr, payloadLen, packet, sizeof(packet), &packetLen);
     if (encoded != proto::Status::Ok) {
         return encoded;
-    }
-    const proto::Status signedPacket = auth_.sign(packet, packetLen, nullptr);
-    if (signedPacket != proto::Status::Ok) {
-        return signedPacket;
     }
     const proto::Status sent = radio_.startTransmit(packet, packetLen);
     if (sent != proto::Status::Ok) {

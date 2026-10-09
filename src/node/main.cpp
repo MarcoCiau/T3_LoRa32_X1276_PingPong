@@ -77,7 +77,11 @@ struct NodeApp {
     proto::PacketCodec codec;
     proto::SequenceManager seq;
     proto::ReplayWindow replay;
+#if defined(LP_AUTH_REQUIRED)
+    proto::AesCcmAuth auth;
+#else
     proto::LabAuthOff auth;
+#endif
     NopCommandExecutor commands;
     node::NodeCheckIn checkIn;
 
@@ -88,6 +92,9 @@ struct NodeApp {
     explicit NodeApp(PreferencesRecordStore& store)
         : seq(rng),
           replay(store),
+#if defined(LP_AUTH_REQUIRED)
+          auth(proto::kDeploymentKey),
+#endif
           checkIn(radio, clock, rng, seq, codec, replay, auth, commands, store, kNodeId, kReportIntervalMs) {}
 };
 

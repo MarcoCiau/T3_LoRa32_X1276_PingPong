@@ -71,7 +71,11 @@ struct GatewayApp {
     proto::PacketCodec codec;
     proto::SequenceManager seq;
     proto::ReplayWindow replay;
+#if defined(LP_AUTH_REQUIRED)
+    proto::AesCcmAuth auth;
+#else
     proto::LabAuthOff auth;
+#endif
     gateway::NodeRegistry registry;
     gateway::CommandQueue commands;
     gateway::OutboundQueue uplink;
@@ -91,6 +95,9 @@ struct GatewayApp {
     explicit GatewayApp(PreferencesRecordStore& store)
         : seq(rng),
           replay(store),
+#if defined(LP_AUTH_REQUIRED)
+          auth(proto::kDeploymentKey),
+#endif
           commands(store),
           coordinator(radio, clock, codec, seq, replay, auth, registry, commands, uplink),
           wifi(clock, station, gateway::kWifiSsid, gateway::kWifiPassword),

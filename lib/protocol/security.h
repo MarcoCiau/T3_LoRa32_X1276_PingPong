@@ -1,8 +1,9 @@
 /**
  * @file security.h
- * @brief Lab authenticator and the persistent replay-counter window.
+ * @brief Authenticators and the persistent replay-counter window.
  *
- * AES-CCM is a later task. This header does not send keys.
+ * LabAuthOff omits the tag. AesCcmAuth appends an 8-byte AES-CCM tag.
+ * Neither type sends the key.
  */
 
 #pragma once
@@ -20,8 +21,8 @@ namespace proto {
 /**
  * @brief Authentication tag length and the sign/verify operations.
  *
- * LabAuthOff omits the tag. A later authenticator appends proto::kAuthTagBytes.
- * The radio CRC is not this tag.
+ * LabAuthOff omits the tag. AesCcmAuth appends proto::kAuthTagBytes.
+ * The radio CRC is not this tag. verify() does not store the replay counter.
  */
 class AuthPort {
 public:
@@ -70,6 +71,46 @@ public:
     uint8_t tagLen() const override;
     Status sign(const uint8_t* frame, size_t frameLen, uint8_t* tag) const override;
     Status verify(const uint8_t* frame, size_t frameLen, const uint8_t* tag) const override;
+};
+
+/**
+ * @brief Placeholder key for LP_AUTH_REQUIRED builds.
+ *
+ * Both ends of a deployment image use this value until provisioning replaces it.
+ * It is never written into a packet.
+ */
+constexpr uint8_t kDeploymentKey[16] = {
+    0x6c, 0x70, 0x2d, 0x64, 0x65, 0x76, 0x2d, 0x6b, 0x65, 0x79, 0x2d, 0x76, 0x31, 0x00, 0x00, 0x00,
+};
+
+/**
+ * @brief AES-CCM tag over a frame. The payload stays in the clear.
+ *
+ * The tag is 8 bytes. The 13-byte nonce is the sender id, the little-endian
+ * replay counter from the header, and eight zero bytes. Call verify() before
+ * ReplayWindow::accept(); a bad tag must not store the counter.
+ * The key is 16 bytes and is not copied into the tag.
+ */
+class AesCcmAuth final : public AuthPort {
+public:
+    /** @brief AES-128 key length. */
+    static constexpr size_t kKeyBytes = 16;
+    /** @brief CCM nonce length. Two bytes remain for the payload-length field. */
+    static constexpr size_t kNonceBytes = 13;
+
+    /**
+     * @brief Copy @p key.
+     * @param key Sixteen key bytes. Required. Not retained by the caller after return.
+     */
+    explicit AesCcmAuth(const uint8_t* key);
+
+    uint8_t tagLen() const override;
+    Status sign(const uint8_t* frame, size_t frameLen, uint8_t* tag) const override;
+    Status verify(const uint8_t* frame, size_t frameLen, const uint8_t* tag) const override;
+
+private:
+    uint8_t key_[kKeyBytes] = {};
+    bool keyOk_ = false;
 };
 
 /**

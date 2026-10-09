@@ -151,10 +151,10 @@ Mark a box only after that task’s verification command succeeds.
 - [x] **T14** Wi-Fi link
 - [x] **T15** MQTT service
 - [x] **T16** Composition roots
-- [ ] **T17** AES-CCM
+- [x] **T17** AES-CCM
 - [ ] **T18** Bench checks
 
-T12 and T13 need the board. T0–T11, T14’s reconnect schedule, T15’s JSON mapping, and T17’s vectors run on the host. A live association waits until `kWifiSsid` is set. A live ThingsBoard broker waits until `LP_MQTT_HOST` and `LP_MQTT_ACCESS_TOKEN` are set. T16 links in the node, gateway, and bring-up envs. The node reports every 60 seconds; that pass is the next hardware session. Network code stays out of the codec.
+T12 and T13 need the board. T0–T11, T14’s reconnect schedule, T15’s JSON mapping, and T17’s AES-CCM vector run on the host. A live association waits until `kWifiSsid` is set. A live ThingsBoard broker waits until `LP_MQTT_HOST` and `LP_MQTT_ACCESS_TOKEN` are set. T16 links in the node, gateway, and bring-up envs. The node reports every 60 seconds; that pass is the next hardware session. Lab images leave `LP_AUTH_REQUIRED` unset. Network code stays out of the codec.
 
 ### T0 — Scaffold
 
