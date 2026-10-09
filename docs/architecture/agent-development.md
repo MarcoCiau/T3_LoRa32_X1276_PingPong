@@ -138,7 +138,7 @@ Mark a box only after that task’s verification command succeeds.
 - [x] **T1** Message types
 - [x] **T2** Header codec
 - [x] **T3** Payload codec
-- [ ] **T4** Sequence manager
+- [x] **T4** Sequence manager
 - [ ] **T5** Auth port, lab auth off
 - [ ] **T6** Record store port and RAM fake
 - [ ] **T7** Node check-in on fakes
