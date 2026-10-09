@@ -136,8 +136,8 @@ Mark a box only after that task’s verification command succeeds.
 
 - [x] **T0** Scaffold envs and folders
 - [x] **T1** Message types
-- [ ] **T2** Header codec
-- [ ] **T3** Payload codec
+- [x] **T2** Header codec
+- [x] **T3** Payload codec
 - [ ] **T4** Sequence manager
 - [ ] **T5** Auth port, lab auth off
 - [ ] **T6** Record store port and RAM fake
