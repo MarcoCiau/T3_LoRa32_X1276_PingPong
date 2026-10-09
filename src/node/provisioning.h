@@ -1,6 +1,6 @@
 /**
  * @file provisioning.h
- * @brief Node provisioning: device id and key storage. The interface comes before the key scheme.
+ * @brief Node provisioning entry. PreferencesRecordStore is the NVS adapter.
  */
 
 #pragma once

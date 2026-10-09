@@ -48,7 +48,7 @@ Status LabAuthOff::verify(const uint8_t* /*frame*/, size_t /*frameLen*/, const u
 ReplayWindow::ReplayWindow(RecordStorePort& store) : store_(store) {}
 
 uint16_t ReplayWindow::replayKey(uint8_t srcId) {
-    return static_cast<uint16_t>(kReplayKeyBase + srcId);
+    return replayCounterKey(srcId);
 }
 
 Status ReplayWindow::accept(uint8_t srcId, uint32_t counter) {

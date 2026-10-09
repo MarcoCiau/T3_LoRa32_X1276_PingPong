@@ -6,71 +6,17 @@
 #include <unity.h>
 
 #include <packet_codec.h>
-#include <record_store_port.h>
 #include <security.h>
 
 #include <cstring>
+
+#include "../fakes/memory_record_store.h"
 
 namespace {
 
 void setStatus(proto::Status actual, proto::Status expected) {
     TEST_ASSERT_EQUAL_INT8(static_cast<int8_t>(expected), static_cast<int8_t>(actual));
 }
-
-/**
- * @brief RAM stand-in for RecordStorePort.
- *
- * A later task replaces this local stub with the shared memory store.
- * commit failure is not simulated here.
- */
-class RamReplayStore final : public RecordStorePort {
-public:
-    static constexpr size_t kBlobBytes = 4;
-    static constexpr size_t kSlots = 16;
-
-    bool read(uint16_t key, uint8_t* dst, size_t len) override {
-        if (dst == nullptr || len != kBlobBytes) {
-            return false;
-        }
-        for (const Slot& slot : slots_) {
-            if (slot.used && slot.key == key) {
-                std::memcpy(dst, slot.data, len);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool commit(uint16_t key, const uint8_t* src, size_t len) override {
-        if (src == nullptr || len != kBlobBytes) {
-            return false;
-        }
-        for (Slot& slot : slots_) {
-            if (slot.used && slot.key == key) {
-                std::memcpy(slot.data, src, len);
-                return true;
-            }
-        }
-        for (Slot& slot : slots_) {
-            if (!slot.used) {
-                slot.used = true;
-                slot.key = key;
-                std::memcpy(slot.data, src, len);
-                return true;
-            }
-        }
-        return false;
-    }
-
-private:
-    struct Slot {
-        bool used = false;
-        uint16_t key = 0;
-        uint8_t data[kBlobBytes] = {};
-    };
-
-    Slot slots_[kSlots] = {};
-};
 
 }  // namespace
 
@@ -79,7 +25,7 @@ void setUp(void) {}
 void tearDown(void) {}
 
 void test_counter_must_be_strictly_newer(void) {
-    RamReplayStore store;
+    MemoryRecordStore store;
     proto::ReplayWindow first(store);
 
     setStatus(first.accept(1, 1), proto::Status::Ok);

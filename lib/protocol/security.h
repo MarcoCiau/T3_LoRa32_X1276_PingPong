@@ -8,6 +8,7 @@
 #pragma once
 
 #include "message_types.h"
+#include "store_keys.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -80,8 +81,8 @@ public:
  */
 class ReplayWindow {
 public:
-    /** @brief First key. Ids 0 through proto::kMaxNodeId use the next keys. */
-    static constexpr uint16_t kReplayKeyBase = 0x0100;
+    /** @brief First replay-counter key. Same value as proto::kReplayCounterKeyBase. */
+    static constexpr uint16_t kReplayKeyBase = kReplayCounterKeyBase;
 
     /**
      * @brief Bind the store that survives reboot.

@@ -1,6 +1,6 @@
 /**
  * @file storage.h
- * @brief Gateway storage: counters, command queue, and the outbound buffer behind one commit interface.
+ * @brief Gateway storage entry. PreferencesRecordStore is the NVS adapter.
  */
 
 #pragma once
