@@ -1,6 +1,6 @@
 # Gateway hardware test
 
-Flash this image before the node. The gateway listens on the lab radio profile and answers a node telemetry frame with one ACK. MQTT is not on the receive path. Wi-Fi stays down until `kWifiSsid` in `src/gateway/wifi_manager.h` is set, and the radio loop does not wait for it. The ping-pong image is a different build and is not this test.
+Flash this image before the node. The gateway listens on the lab radio profile and answers a node telemetry frame with one ACK. Wi-Fi stays down until `kWifiSsid` in `src/gateway/wifi_manager.h` is set. MQTT stays down until `LP_MQTT_HOST` and `LP_MQTT_ACCESS_TOKEN` in `src/gateway/mqtt_service.h` are set. Those macros are the ThingsBoard CE device API: port 1883, the access token is the username, telemetry is `v1/devices/me/telemetry`, and RPC commands arrive on `v1/devices/me/rpc/request/+`. The radio loop does not wait for either. The ping-pong image is a different build and is not this test.
 
 The node steps are in [node-hardware-test.md](node-hardware-test.md).
 

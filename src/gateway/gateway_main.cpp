@@ -2,8 +2,9 @@
  * @file gateway_main.cpp
  * @brief Gateway bring-up: listen, and answer a node check-in with an Ack.
  *
- * The receive path does not publish MQTT. Wi-Fi poll runs after the radio step and returns
- * without waiting for the association.
+ * The radio step does not publish MQTT. Wi-Fi poll and one MQTT poll run after it and
+ * return without waiting for the association or the broker. Empty Wi-Fi and MQTT
+ * placeholders leave both down.
  */
 
 #include <Arduino.h>
@@ -11,6 +12,7 @@
 #include "board_profile.h"
 #include "clock_port.h"
 #include "command_queue.h"
+#include "mqtt_service.h"
 #include "node_registry.h"
 #include "outbound_queue.h"
 #include "packet_codec.h"
@@ -76,11 +78,14 @@ struct GatewayApp {
     gateway::RadioService coordinator;
     gateway::EspWifiStation station;
     gateway::WifiLink wifi;
+    gateway::EspMqttClient mqttClient;
+    gateway::MqttService mqtt;
 
     /**
      * @brief Bind the coordinator to @p store.
      *
      * Wi-Fi is constructed with the lab credentials. An empty SSID leaves the station down.
+     * MQTT uses the ThingsBoard CE placeholders. An empty host or token leaves it idle.
      * @param store Open NVS record store. Must outlive this object.
      */
     explicit GatewayApp(PreferencesRecordStore& store)
@@ -88,7 +93,8 @@ struct GatewayApp {
           replay(store),
           commands(store),
           coordinator(radio, clock, codec, seq, replay, auth, registry, commands, uplink),
-          wifi(clock, station, gateway::kWifiSsid, gateway::kWifiPassword) {}
+          wifi(clock, station, gateway::kWifiSsid, gateway::kWifiPassword),
+          mqtt(wifi, uplink, commands, mqttClient, gateway::kMqttSettings) {}
 };
 
 PreferencesRecordStore store;
@@ -136,6 +142,7 @@ void setup() {
         halt(F("[gateway] listen fail"));
     }
     app->wifi.begin();
+    app->mqtt.begin();
     Serial.println(F("[gateway] listening"));
 }
 
@@ -148,6 +155,7 @@ void loop() {
 
     const proto::Status stepped = app->coordinator.poll();
     app->wifi.poll();
+    app->mqtt.poll();
     if (stepped == proto::Status::Busy || stepped == proto::Status::Ok) {
         gateway::NodeFacts facts = {};
         static bool heard = false;

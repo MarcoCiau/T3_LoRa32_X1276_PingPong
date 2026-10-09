@@ -149,12 +149,12 @@ Mark a box only after that task’s verification command succeeds.
 - [x] **T12** Node RadioLib adapter
 - [x] **T13** Gateway RadioLib adapter
 - [x] **T14** Wi-Fi link
-- [ ] **T15** MQTT service
+- [x] **T15** MQTT service
 - [ ] **T16** Composition roots
 - [ ] **T17** AES-CCM
 - [ ] **T18** Bench checks
 
-T12 and T13 need the board. T0–T11, T14’s reconnect schedule, and T17’s vectors run on the host. A live association waits until `kWifiSsid` is set. T15–T16 need the board for a smoke flash and still keep network code out of the codec.
+T12 and T13 need the board. T0–T11, T14’s reconnect schedule, T15’s JSON mapping, and T17’s vectors run on the host. A live association waits until `kWifiSsid` is set. A live ThingsBoard broker waits until `LP_MQTT_HOST` and `LP_MQTT_ACCESS_TOKEN` are set. T16 needs the board for a smoke flash and still keeps network code out of the codec.
 
 ### T0 — Scaffold
 
@@ -375,7 +375,7 @@ T12 and T13 need the board. T0–T11, T14’s reconnect schedule, and T17’s ve
 
 **Read:** [firmware.md](firmware.md) boundaries for `mqtt_service`.
 
-**Do:** `MqttService::poll()` pops at most **one** outbound record per call when Wi-Fi is up and the client is connected, and publishes JSON for that record. Downlink command messages parse into `CommandQueue` (id, node, type, body). Radio code does not call `poll()`. Topics and the broker host are constexpr config. JSON is built into a fixed buffer.
+**Do:** `MqttService::poll()` pops at most **one** outbound record per call when Wi-Fi is up and the client is connected, and publishes JSON for that record. Downlink command messages parse into `CommandQueue` (id, node, type, body). Radio code does not call `poll()`. The broker host, port, access token, and topics are `#define` placeholders (`LP_MQTT_*`) for the ThingsBoard CE device API. JSON is built into a fixed buffer.
 
 **Done when:** A host test of the JSON mapping runs without the MQTT library (pure function from record to bytes). Device build compiles. A live broker test is reported separately; absence of a broker does not undo the host test.
 
