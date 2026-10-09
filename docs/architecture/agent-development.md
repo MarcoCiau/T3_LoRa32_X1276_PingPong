@@ -139,8 +139,8 @@ Mark a box only after that task’s verification command succeeds.
 - [x] **T2** Header codec
 - [x] **T3** Payload codec
 - [x] **T4** Sequence manager
-- [ ] **T5** Auth port, lab auth off
-- [ ] **T6** Record store port and RAM fake
+- [x] **T5** Auth port, lab auth off
+- [ ] **T6** Record store port and RAM fake (for port-hal, use esp32 nvs (#include <Preferences.h>) )
 - [ ] **T7** Node check-in on fakes
 - [ ] **T8** Node command policy
 - [ ] **T9** Gateway registry and command queue
