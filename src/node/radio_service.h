@@ -46,6 +46,11 @@ public:
     bool takeTransmitDone();
 
     /**
+     * @brief True while a transmit accepted by startTransmit has not finished.
+     */
+    bool transmitting() const;
+
+    /**
      * @brief Start sending @p data. The bytes are copied and remain valid until the IRQ.
      * @return Status::Ok, Busy when a transmit is already in progress, or BadPayload.
      */

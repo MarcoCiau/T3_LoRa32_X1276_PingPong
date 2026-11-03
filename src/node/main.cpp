@@ -10,8 +10,11 @@
 #include <Arduino.h>
 
 #include "board_profile.h"
+#include "button_gesture.h"
 #include "clock_port.h"
+#include "node_binding.h"
 #include "node_check_in.h"
+#include "node_pairing.h"
 #include "nop_command_executor.h"
 #include "packet_codec.h"
 #include "radio_service.h"
@@ -19,6 +22,7 @@
 #include "security.h"
 #include "sequence_manager.h"
 
+#include <esp_mac.h>
 #include <esp_system.h>
 
 #include <cstddef>
@@ -84,18 +88,38 @@ struct NodeApp {
 #endif
     NopCommandExecutor commands;
     node::NodeCheckIn checkIn;
+    ButtonGesture button;
+    node::NodePairing pairing;
 
     /**
-     * @brief Bind the check-in to @p store.
+     * @brief Bind the check-in and the pairing session.
      * @param store Open NVS record store. Must outlive this object.
+     * @param mac Station MAC, proto::kMacBytes.
+     * @param binding Stored pairing. An unpaired binding suspends telemetry.
      */
-    explicit NodeApp(PreferencesRecordStore& store)
+    NodeApp(PreferencesRecordStore& store, const uint8_t* mac, const node::Binding& binding)
         : seq(rng),
           replay(store),
 #if defined(LP_AUTH_REQUIRED)
           auth(proto::kDeploymentKey),
 #endif
-          checkIn(radio, clock, rng, seq, codec, replay, auth, commands, store, kNodeId, kReportIntervalMs) {}
+          checkIn(radio,
+                  clock,
+                  rng,
+                  seq,
+                  codec,
+                  replay,
+                  auth,
+                  commands,
+                  store,
+                  binding.paired ? binding.nodeId : kNodeId,
+                  kReportIntervalMs),
+          button(ButtonRole::Node),
+          pairing(radio, clock, rng, codec, auth, store, checkIn, mac) {
+        if (!binding.paired) {
+            checkIn.suspend(true);
+        }
+    }
 };
 
 PreferencesRecordStore store;
@@ -116,12 +140,17 @@ void setup() {
     Serial.begin(115200);
     pinMode(board::kBoardLedPin, OUTPUT);
     digitalWrite(board::kBoardLedPin, LOW);
+    pinMode(board::kUserButtonPin, INPUT_PULLUP);
 
     Serial.println(F("[node] radio begin"));
     if (!store.open()) {
         halt(F("[node] nvs fail"));
     }
-    app = new (appStorage) NodeApp(store);
+    uint8_t mac[proto::kMacBytes] = {};
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    node::Binding binding = {};
+    (void)node::loadBinding(store, &binding);
+    app = new (appStorage) NodeApp(store, mac, binding);
     if (app->radio.begin() != proto::Status::Ok) {
         halt(F("[node] radio fail"));
     }
@@ -138,12 +167,57 @@ void setup() {
     Serial.print(board::kRadioSyncWord, HEX);
     Serial.print(F(" power dBm "));
     Serial.println(board::kRadioOutputPowerDbm);
-    Serial.print(F("[node] check-in node "));
-    Serial.print(kNodeId);
-    Serial.print(F(" every ms "));
-    Serial.println(kReportIntervalMs);
+    if (binding.paired) {
+        Serial.print(F("[node] check-in node "));
+        Serial.print(binding.nodeId);
+        Serial.print(F(" every ms "));
+        Serial.println(kReportIntervalMs);
+    } else {
+        Serial.println(F("[node] unpaired"));
+    }
 }
 
 void loop() {
-    app->checkIn.poll();
+    const uint32_t now = millis();
+    const bool pressed = digitalRead(board::kUserButtonPin) == LOW;
+    const Gesture gesture = app->button.poll(pressed, now);
+    if (gesture == Gesture::Unpair) {
+        app->pairing.beginUnpair();
+    } else if (gesture == Gesture::Click && !app->pairing.active()) {
+        if (app->pairing.paired()) {
+            app->pairing.beginPing();
+        } else {
+            app->pairing.beginPair();
+        }
+    }
+
+    if (app->pairing.active()) {
+        app->pairing.poll();
+    } else {
+        app->checkIn.poll();
+    }
+
+    switch (app->pairing.takeEvent()) {
+    case node::PairEvent::Paired:
+        Serial.print(F("[node] paired "));
+        Serial.println(app->pairing.nodeId());
+        break;
+    case node::PairEvent::PairFailed:
+        Serial.println(F("[node] pair failed"));
+        break;
+    case node::PairEvent::PingOk:
+        Serial.println(F("[node] ping ok"));
+        break;
+    case node::PairEvent::PingFail:
+        Serial.println(F("[node] ping fail"));
+        break;
+    case node::PairEvent::Unpaired:
+        Serial.println(F("[node] unpaired"));
+        break;
+    case node::PairEvent::None:
+        break;
+    }
+
+    const bool led = app->button.hint(now) == HoldHint::Unpair || app->pairing.ledOn(now);
+    digitalWrite(board::kBoardLedPin, led ? HIGH : LOW);
 }

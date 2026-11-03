@@ -109,6 +109,10 @@ void RadioLibRadio::poll() {
     }
 }
 
+bool RadioLibRadio::transmitting() const {
+    return phase_ == Phase::Transmitting;
+}
+
 bool RadioLibRadio::takeTransmitDone() {
     if (!txDone_) {
         return false;
