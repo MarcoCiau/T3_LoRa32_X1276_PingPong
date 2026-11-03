@@ -11,21 +11,27 @@
 #include <Arduino.h>
 
 #include "board_profile.h"
+#include "button_gesture.h"
 #include "clock_port.h"
 #include "command_queue.h"
 #include "mqtt_service.h"
 #include "node_registry.h"
 #include "outbound_queue.h"
 #include "packet_codec.h"
+#include "pairing_table.h"
 #include "radio_service.h"
 #include "random_port.h"
 #include "security.h"
 #include "sequence_manager.h"
 #include "wifi_manager.h"
+#include "wifi_setup.h"
 
 #include "../node/radio_service.h"
 
+#include <esp_mac.h>
 #include <esp_system.h>
+
+#include <cstdio>
 
 #include <cstddef>
 #include <new>
@@ -113,17 +119,24 @@ struct GatewayApp {
     gateway::NodeRegistry registry;
     gateway::CommandQueue commands;
     gateway::OutboundQueue uplink;
+    gateway::PairingTable pairing;
     gateway::RadioService coordinator;
     gateway::EspWifiStation station;
     gateway::WifiLink wifi;
     gateway::EspMqttClient mqttClient;
     gateway::MqttService mqtt;
+    char apName[16];
+    ButtonGesture button;
+    gateway::WifiSecrets& secrets;
+    gateway::WifiPortal& portal;
+    gateway::WifiSetup setup;
+    bool pendingReset = false;
 
     /**
      * @brief Bind the coordinator to @p store.
      *
-     * Wi-Fi is constructed with the lab credentials. An empty SSID leaves the station down.
-     * MQTT uses the ThingsBoard CE placeholders. An empty host or token leaves it idle.
+     * Wi-Fi starts from NVS when a setup form has been saved, and otherwise from
+     * the compile-time SSID. MQTT uses the ThingsBoard CE placeholders.
      * @param store Open NVS record store. Must outlive this object.
      */
     explicit GatewayApp(PreferencesRecordStore& store)
@@ -133,9 +146,29 @@ struct GatewayApp {
           auth(proto::kDeploymentKey),
 #endif
           commands(store),
-          coordinator(radio, clock, codec, seq, replay, auth, registry, commands, uplink),
+          pairing(store),
+          coordinator(radio, clock, codec, seq, replay, auth, registry, commands, uplink, pairing),
           wifi(clock, station, gateway::kWifiSsid, gateway::kWifiPassword),
-          mqtt(wifi, uplink, commands, mqttClient, gateway::kMqttSettings) {}
+          mqtt(wifi, uplink, commands, mqttClient, gateway::kMqttSettings),
+          button(ButtonRole::Gateway),
+          secrets(gateway::deviceWifiSecrets()),
+          portal(gateway::deviceWifiPortal()),
+          setup(clock, portal, secrets, wifi, apName) {
+        uint8_t mac[proto::kMacBytes] = {};
+        esp_read_mac(mac, ESP_MAC_WIFI_STA);
+        std::snprintf(apName, sizeof(apName), "lp-gw-%02X%02X", mac[4], mac[5]);
+    }
+
+    /** @brief Join the stored network, or the compile-time SSID when NVS is empty. */
+    void startNetwork() {
+        char ssid[gateway::WifiSetup::kSsidCap] = {};
+        char password[gateway::WifiSetup::kPasswordCap] = {};
+        if (secrets.load(ssid, sizeof(ssid), password, sizeof(password))) {
+            wifi.reconfigure(ssid, password);
+            return;
+        }
+        wifi.begin();
+    }
 };
 
 PreferencesRecordStore store;
@@ -156,6 +189,7 @@ void setup() {
     Serial.begin(115200);
     pinMode(board::kBoardLedPin, OUTPUT);
     digitalWrite(board::kBoardLedPin, LOW);
+    pinMode(board::kUserButtonPin, INPUT_PULLUP);
 
     Serial.println(F("[gateway] radio begin"));
     if (!store.open()) {
@@ -182,18 +216,66 @@ void setup() {
     if (app->coordinator.poll() != proto::Status::Ok) {
         halt(F("[gateway] listen fail"));
     }
-    app->wifi.begin();
+    app->startNetwork();
     app->mqtt.begin();
     Serial.println(F("[gateway] listening"));
 }
 
 void loop() {
+    const uint32_t now = millis();
     const proto::Status stepped = app->coordinator.poll();
+    const bool pressed = digitalRead(board::kUserButtonPin) == LOW;
+    const Gesture gesture = app->button.poll(pressed, now);
+    if (gesture == Gesture::Click) {
+        if (app->setup.active()) {
+            app->setup.cancel();
+            Serial.println(F("[gateway] wifi setup cancelled"));
+        } else if (app->pairing.windowOpen(now)) {
+            app->pairing.closeWindow();
+            Serial.println(F("[gateway] pairing closed"));
+        } else {
+            app->pairing.openWindow(now);
+            Serial.println(F("[gateway] pairing"));
+        }
+    } else if (gesture == Gesture::WifiSetup) {
+        app->pairing.closeWindow();
+        app->setup.begin();
+        Serial.print(F("[gateway] wifi setup "));
+        Serial.println(app->apName);
+    } else if (gesture == Gesture::FactoryReset) {
+        app->pendingReset = true;
+        Serial.println(F("[gateway] factory reset"));
+    }
+
+    app->coordinator.setIgnorePairRequests(app->setup.active());
+    if (app->pendingReset && !app->radio.transmitting()) {
+        app->pairing.wipe(app->replay, app->commands);
+        app->uplink.clear();
+        (void)app->secrets.clear();
+        ESP.restart();
+    }
+
+    app->setup.poll();
+    app->wifi.setPaused(app->setup.active());
     app->wifi.poll();
     app->mqtt.poll();
-    if (app->radio.takeTransmitDone()) {
+
+    const HoldHint hint = app->button.hint(now);
+    if (app->pendingReset || hint == HoldHint::Reset) {
+        digitalWrite(board::kBoardLedPin, ((now / 100u) % 2u) == 0u ? HIGH : LOW);
+    } else if (app->setup.active() || hint == HoldHint::Wifi) {
+        digitalWrite(board::kBoardLedPin, HIGH);
+    } else if (app->pairing.windowOpen(now)) {
+        digitalWrite(board::kBoardLedPin, ((now / 400u) % 2u) == 0u ? HIGH : LOW);
+    } else if (app->radio.takeTransmitDone()) {
         digitalWrite(board::kBoardLedPin, HIGH);
         Serial.println(F("[gateway] ack sent"));
+    }
+
+    const uint8_t admitted = app->pairing.takeAdmitted();
+    if (admitted != 0) {
+        Serial.print(F("[gateway] paired node "));
+        Serial.println(admitted);
     }
     if (stepped != proto::Status::Ok && stepped != proto::Status::Busy) {
         Serial.println(F("[gateway] poll fail"));

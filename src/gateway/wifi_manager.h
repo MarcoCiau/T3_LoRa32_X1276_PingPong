@@ -60,7 +60,7 @@ public:
     /**
      * @brief Bind the clock, the station, and the credentials.
      *
-     * @p clock, @p station, @p ssid, and @p password must outlive this object.
+     * @p clock and @p station must outlive this object. The SSID and password are copied.
      * An empty or null @p ssid disables the link.
      */
     WifiLink(ClockPort& clock, WifiStation& station, const char* ssid, const char* password);
@@ -80,15 +80,29 @@ public:
     /** @brief True when the link is enabled and the station reports an association. */
     bool connected() const;
 
+    /**
+     * @brief Replace the station credentials and start a join when @p ssid is not empty.
+     * @param ssid Access point name. Null is treated as empty, which disables the link.
+     * @param password Access point secret. Null is treated as empty.
+     */
+    void reconfigure(const char* ssid, const char* password);
+
+    /**
+     * @brief Hold poll() so a setup access point is not torn down.
+     * @param paused True to skip reconnect attempts.
+     */
+    void setPaused(bool paused);
+
 private:
     /** @brief Start one join and arm the next gap. */
     void startAttempt(uint32_t now);
 
     ClockPort& clock_;
     WifiStation& station_;
-    const char* ssid_;
-    const char* password_;
+    char ssid_[33] = {};
+    char password_[65] = {};
     bool enabled_ = false;
+    bool paused_ = false;
     bool attemptPending_ = false;
     uint32_t gapMs_ = kWifiBackoffMinMs;
     uint32_t waitMs_ = kWifiBackoffMinMs;

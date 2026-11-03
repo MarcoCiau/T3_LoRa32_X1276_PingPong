@@ -29,6 +29,11 @@ proto::Status OutboundQueue::push(const UplinkRecord& record) {
     return proto::Status::Ok;
 }
 
+void OutboundQueue::clear() {
+    head_ = 0;
+    size_ = 0;
+}
+
 bool OutboundQueue::pop(UplinkRecord* out) {
     if (out == nullptr || size_ == 0) {
         return false;

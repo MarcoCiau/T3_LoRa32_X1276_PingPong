@@ -191,6 +191,35 @@ proto::Status CommandQueue::markResult(uint32_t commandId, proto::CommandResultS
     return proto::Status::Ok;
 }
 
+void CommandQueue::dropFor(uint8_t nodeId) {
+    if (nodeId < proto::kMinNodeId || nodeId > proto::kMaxNodeId) {
+        return;
+    }
+    for (uint8_t index = 0; index < kCommandCapacity; ++index) {
+        if (!slots_[index].used || slots_[index].command.nodeId != nodeId) {
+            continue;
+        }
+        if (!store_.erase(proto::commandSlotKey(index))) {
+            continue;
+        }
+        slots_[index].used = false;
+        slots_[index].command = {};
+    }
+}
+
+void CommandQueue::clear() {
+    for (uint8_t index = 0; index < kCommandCapacity; ++index) {
+        if (!slots_[index].used) {
+            continue;
+        }
+        if (!store_.erase(proto::commandSlotKey(index))) {
+            continue;
+        }
+        slots_[index].used = false;
+        slots_[index].command = {};
+    }
+}
+
 uint8_t CommandQueue::size() const {
     uint8_t count = 0;
     for (const Slot& slot : slots_) {

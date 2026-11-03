@@ -45,6 +45,9 @@ public:
     /** @brief Telemetry records discarded because the queue could not keep them. */
     uint32_t droppedTelemetry() const;
 
+    /** @brief Drop every stored record. Does not change droppedTelemetry(). */
+    void clear();
+
 private:
     /** @brief Record at logical position @p index, where 0 is the next pop. */
     UplinkRecord& at(uint8_t index);

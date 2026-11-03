@@ -13,9 +13,12 @@
 #include "node_registry.h"
 #include "outbound_buffer.h"
 #include "packet_codec.h"
+#include "pairing_table.h"
 #include "radio_port.h"
 #include "security.h"
 #include "sequence_manager.h"
+
+#include <cstring>
 
 namespace gateway {
 namespace {
@@ -62,9 +65,10 @@ RadioService::RadioService(RadioPort& radio,
                            proto::SequenceManager& seq,
                            proto::ReplayWindow& replay,
                            proto::AuthPort& auth,
-                           NodeRegistry& registry,
-                           CommandQueue& commands,
-                           OutboundBuffer& uplink)
+                 NodeRegistry& registry,
+                 CommandQueue& commands,
+                 OutboundBuffer& uplink,
+                 PairingTable& pairing)
     : radio_(radio),
       clock_(clock),
       codec_(codec),
@@ -73,7 +77,12 @@ RadioService::RadioService(RadioPort& radio,
       auth_(auth),
       registry_(registry),
       commands_(commands),
-      uplink_(uplink) {}
+      uplink_(uplink),
+      pairing_(pairing) {}
+
+void RadioService::setIgnorePairRequests(bool ignore) {
+    ignorePair_ = ignore;
+}
 
 proto::Status RadioService::poll() {
     const proto::Status listening = radio_.startReceive();
@@ -94,6 +103,9 @@ proto::Status RadioService::poll() {
 }
 
 proto::Status RadioService::handle(const uint8_t* data, size_t len, float rssi, float snr) {
+    if (len >= 2 && data[1] == static_cast<uint8_t>(proto::MessageType::PairRequest)) {
+        return handlePairRequest(data, len);
+    }
     const bool authOn = auth_.tagLen() != 0;
     proto::DecodedPacket decoded = {};
     if (codec_.decode(data, len, proto::kGatewayId, authOn, &decoded) != proto::Status::Ok) {
@@ -109,12 +121,19 @@ proto::Status RadioService::handle(const uint8_t* data, size_t len, float rssi, 
     if (decoded.srcId < proto::kMinNodeId || decoded.srcId > proto::kMaxNodeId) {
         return proto::Status::Ok;
     }
-    if (decoded.type != proto::MessageType::Telemetry && decoded.type != proto::MessageType::CommandResult) {
+    if (!pairing_.paired(decoded.srcId)) {
+        return proto::Status::Ok;
+    }
+    if (decoded.type != proto::MessageType::Telemetry && decoded.type != proto::MessageType::CommandResult &&
+        decoded.type != proto::MessageType::Ping && decoded.type != proto::MessageType::Unpair) {
         return proto::Status::Ok;
     }
 
     const proto::Status seqStatus = seq_.accept(decoded.srcId, decoded.seq);
     if (seqStatus == proto::Status::Duplicate) {
+        if (decoded.type == proto::MessageType::Ping || decoded.type == proto::MessageType::Unpair) {
+            return sendAck(decoded.srcId, false, nullptr);
+        }
         const LastAck& previous = lastAck_[decoded.srcId];
         const bool repeatCommand = decoded.type == proto::MessageType::Telemetry && previous.valid &&
                                     previous.seq == decoded.seq && previous.hasCommand;
@@ -130,7 +149,99 @@ proto::Status RadioService::handle(const uint8_t* data, size_t len, float rssi, 
     if (decoded.type == proto::MessageType::Telemetry) {
         return acceptTelemetry(decoded, rssi, snr);
     }
+    if (decoded.type == proto::MessageType::Ping) {
+        return acceptPing(decoded, rssi, snr);
+    }
+    if (decoded.type == proto::MessageType::Unpair) {
+        return acceptUnpair(decoded);
+    }
     return acceptResult(decoded);
+}
+
+proto::Status RadioService::acceptPing(const proto::DecodedPacket& packet, float rssi, float snr) {
+    if (packet.payloadLen != 0) {
+        return proto::Status::Ok;
+    }
+    registry_.observe(packet.srcId, packet.counter, packet.seq, rssi, snr, clock_.millis(), nullptr);
+    return sendAck(packet.srcId, false, nullptr);
+}
+
+proto::Status RadioService::acceptUnpair(const proto::DecodedPacket& packet) {
+    if (packet.payload == nullptr || packet.payloadLen != proto::kMacBytes) {
+        return proto::Status::Ok;
+    }
+    uint8_t stored[proto::kMacBytes] = {};
+    if (!pairing_.macFor(packet.srcId, stored) || std::memcmp(stored, packet.payload, proto::kMacBytes) != 0) {
+        return proto::Status::Ok;
+    }
+    if (pairing_.release(packet.srcId, replay_, commands_) != proto::Status::Ok) {
+        return proto::Status::Ok;
+    }
+    return sendAck(packet.srcId, false, nullptr);
+}
+
+proto::Status RadioService::handlePairRequest(const uint8_t* data, size_t len) {
+    proto::DecodedPacket decoded = {};
+    if (codec_.decode(data, len, proto::kGatewayId, false, &decoded) != proto::Status::Ok) {
+        return proto::Status::Ok;
+    }
+    if (decoded.type != proto::MessageType::PairRequest || decoded.srcId != proto::kUnassignedId) {
+        return proto::Status::Ok;
+    }
+    if (decoded.payload == nullptr || decoded.payloadLen != proto::kMacBytes) {
+        return proto::Status::Ok;
+    }
+    if (ignorePair_ || !pairing_.windowOpen(clock_.millis())) {
+        return proto::Status::Ok;
+    }
+
+    uint8_t nodeId = 0;
+    uint32_t lastCommand = 0;
+    const proto::Status admitted = pairing_.admit(decoded.payload, &nodeId, &lastCommand);
+    if (admitted == proto::Status::Busy) {
+        uint8_t reason = 0;
+        uint8_t reasonLen = 0;
+        if (codec_.writePairReject(proto::kPairRejectFull, &reason, sizeof(reason), &reasonLen) != proto::Status::Ok) {
+            return proto::Status::Ok;
+        }
+        return sendOpen(proto::MessageType::PairReject, proto::kUnassignedId, &reason, reasonLen);
+    }
+    if (admitted != proto::Status::Ok) {
+        return proto::Status::Ok;
+    }
+
+    uint8_t payload[11] = {};
+    uint8_t payloadLen = 0;
+    const proto::Status wrote =
+        codec_.writePairAccept(nodeId, decoded.payload, lastCommand, payload, sizeof(payload), &payloadLen);
+    if (wrote != proto::Status::Ok) {
+        return wrote;
+    }
+    const proto::Status sent = sendOpen(proto::MessageType::PairAccept, proto::kUnassignedId, payload, payloadLen);
+    if (sent == proto::Status::Ok) {
+        pairing_.closeWindow();
+    }
+    return sent;
+}
+
+proto::Status RadioService::sendOpen(proto::MessageType type,
+                                     uint8_t dstId,
+                                     const uint8_t* payload,
+                                     uint8_t payloadLen) {
+    proto::PacketHeader header = {};
+    header.type = type;
+    header.srcId = proto::kGatewayId;
+    header.dstId = dstId;
+    header.seq = 1;
+    header.counter = 0;
+    uint8_t packet[proto::kMaxPhyBytes] = {};
+    size_t packetLen = 0;
+    const proto::Status encoded =
+        codec_.encode(header, payload, payloadLen, false, nullptr, packet, sizeof(packet), &packetLen);
+    if (encoded != proto::Status::Ok) {
+        return encoded;
+    }
+    return radio_.startTransmit(packet, packetLen);
 }
 
 proto::Status RadioService::acceptTelemetry(const proto::DecodedPacket& packet, float rssi, float snr) {

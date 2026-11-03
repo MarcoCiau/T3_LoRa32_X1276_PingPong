@@ -135,6 +135,15 @@ public:
     /** @brief How many slots are occupied, in any state. */
     uint8_t size() const;
 
+    /**
+     * @brief Drop every command aimed at @p nodeId and erase those slots.
+     * @param nodeId Target node, 1..10.
+     */
+    void dropFor(uint8_t nodeId);
+
+    /** @brief Drop every command and erase the stored slots. */
+    void clear();
+
 private:
     /** @brief One stored command. used is false for an empty slot. */
     struct Slot {
