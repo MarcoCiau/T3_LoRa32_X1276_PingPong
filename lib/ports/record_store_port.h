@@ -35,4 +35,11 @@ public:
      * @return true when the new bytes are readable. false leaves the previous blob unchanged.
      */
     virtual bool commit(uint16_t key, const uint8_t* src, size_t len) = 0;
+
+    /**
+     * @brief Remove the blob stored at @p key.
+     * @param key Record id.
+     * @return true when the key is absent or was removed. false when the store cannot erase.
+     */
+    virtual bool erase(uint16_t key) = 0;
 };
