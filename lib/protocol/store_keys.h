@@ -56,4 +56,23 @@ static_assert(kLastCommandIdKeyBase + 16 <= kNextCommandIdKey,
 static_assert(kNextCommandIdKey < kCommandSlotKeyBase,
               "the next command id key and command slots must not overlap");
 
+/** @brief First key for a gateway pairing slot. Node ids 1..10 follow. The blob is 7 bytes. */
+constexpr uint16_t kPairSlotKeyBase = 0x0400;
+
+/**
+ * @brief Storage key for the pairing slot of @p nodeId.
+ * @param nodeId Node id. Callers use 1..proto::kMaxNodeId.
+ */
+constexpr uint16_t pairSlotKey(uint8_t nodeId) {
+    return static_cast<uint16_t>(kPairSlotKeyBase + nodeId);
+}
+
+/** @brief Node pairing record. The blob is 6 bytes: flag, id, and last command id. */
+constexpr uint16_t kNodeBindingKey = 0x0500;
+
+static_assert(kCommandSlotKeyBase + 16 <= kPairSlotKeyBase,
+              "command slots and pairing slots must not overlap");
+static_assert(kPairSlotKeyBase + 16 <= kNodeBindingKey,
+              "pairing slots and the node binding must not overlap");
+
 }  // namespace proto

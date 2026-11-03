@@ -151,6 +151,13 @@ public:
      */
     Status accept(uint8_t srcId, uint32_t counter);
 
+    /**
+     * @brief Forget the stored counter for @p srcId.
+     * @param srcId Sender id in 0..proto::kMaxNodeId.
+     * @return Status::Ok, BadDestination, or BadPayload when the store cannot erase.
+     */
+    Status forget(uint8_t srcId);
+
 private:
     RecordStorePort& store_;
 };

@@ -203,6 +203,59 @@ public:
      * @return Status::Ok, or BadPayload when @p len exceeds the budget.
      */
     Status checkTelemetry(const uint8_t* data, uint8_t len, bool authOn) const;
+
+    /**
+     * @brief Write a PairAccept payload.
+     *
+     * Layout: node_id, 6-byte MAC, little-endian last_command_id.
+     * @param nodeId Assigned id, 1..proto::kMaxNodeId.
+     * @param mac MAC echoed to the node. Required. proto::kMacBytes.
+     * @param lastCommandId Last completed command, or 0 when none.
+     * @param out Destination. Required.
+     * @param outCap Capacity of @p out.
+     * @param outLen Receives 11 on success.
+     * @return Status::Ok, Truncated, or BadPayload.
+     */
+    Status writePairAccept(uint8_t nodeId,
+                           const uint8_t* mac,
+                           uint32_t lastCommandId,
+                           uint8_t* out,
+                           size_t outCap,
+                           uint8_t* outLen) const;
+
+    /**
+     * @brief Read a PairAccept payload.
+     * @param payload Payload bytes. Required.
+     * @param payloadLen Length of @p payload. Must be 11.
+     * @param nodeId Receives the assigned id.
+     * @param mac Receives proto::kMacBytes. Required.
+     * @param lastCommandId Receives the little-endian command id.
+     * @return Status::Ok or BadPayload.
+     */
+    Status readPairAccept(const uint8_t* payload,
+                          uint8_t payloadLen,
+                          uint8_t* nodeId,
+                          uint8_t* mac,
+                          uint32_t* lastCommandId) const;
+
+    /**
+     * @brief Write a one-byte PairReject payload.
+     * @param reason proto::kPairRejectFull or a later reason.
+     * @param out Destination. Required.
+     * @param outCap Capacity of @p out.
+     * @param outLen Receives 1 on success.
+     * @return Status::Ok, Truncated, or BadPayload.
+     */
+    Status writePairReject(uint8_t reason, uint8_t* out, size_t outCap, uint8_t* outLen) const;
+
+    /**
+     * @brief Read a PairReject reason.
+     * @param payload Payload bytes. Required.
+     * @param payloadLen Length of @p payload. Must be 1.
+     * @param reason Receives the reason byte.
+     * @return Status::Ok or BadPayload.
+     */
+    Status readPairReject(const uint8_t* payload, uint8_t payloadLen, uint8_t* reason) const;
 };
 
 }  // namespace proto

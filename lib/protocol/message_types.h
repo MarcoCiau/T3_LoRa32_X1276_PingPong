@@ -28,6 +28,11 @@ enum class MessageType : uint8_t {
     Ack = 2,            ///< Packet accepted. Payload is empty or one command.
     CommandResult = 3,  ///< Node report of what a command did. Not an Ack.
     Heartbeat = 4,      ///< Optional liveness packet. No body builder in the prototype.
+    PairRequest = 5,    ///< Unpaired node, button window only. Payload is the 6-byte MAC.
+    PairAccept = 6,     ///< Gateway assigns an id. Payload is id, MAC, and last command id.
+    PairReject = 7,     ///< Gateway pairing window is open and every id is taken.
+    Unpair = 8,         ///< Paired node asks the gateway to free its id.
+    Ping = 9,           ///< Paired node range check. The Ack is empty.
 };
 
 /** @brief Gateway device id. */
@@ -36,6 +41,22 @@ constexpr uint8_t kGatewayId = 0;
 constexpr uint8_t kMinNodeId = 1;
 /** @brief Highest node id in this version. */
 constexpr uint8_t kMaxNodeId = 10;
+/** @brief Sender or destination that has no node id yet. Used only by pairing frames. */
+constexpr uint8_t kUnassignedId = 0xFF;
+/** @brief Wi-Fi station MAC length carried in pairing and unpair payloads. */
+constexpr uint8_t kMacBytes = 6;
+/** @brief PairReject reason: every id from 1 to 10 is already paired. */
+constexpr uint8_t kPairRejectFull = 1;
+
+/**
+ * @brief True for the three pairing frames that omit the auth tag.
+ * @param type Frame type.
+ * @return true for PairRequest, PairAccept, and PairReject.
+ */
+constexpr bool omitsAuthTag(MessageType type) {
+    return type == MessageType::PairRequest || type == MessageType::PairAccept ||
+           type == MessageType::PairReject;
+}
 
 /** @brief Maximum PHY payload, header and auth tag included. */
 constexpr uint8_t kMaxPhyBytes = 64;

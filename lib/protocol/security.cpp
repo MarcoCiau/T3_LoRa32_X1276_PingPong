@@ -70,4 +70,14 @@ Status ReplayWindow::accept(uint8_t srcId, uint32_t counter) {
     return Status::Ok;
 }
 
+Status ReplayWindow::forget(uint8_t srcId) {
+    if (srcId > kMaxNodeId) {
+        return Status::BadDestination;
+    }
+    if (!store_.erase(replayKey(srcId))) {
+        return Status::BadPayload;
+    }
+    return Status::Ok;
+}
+
 }  // namespace proto

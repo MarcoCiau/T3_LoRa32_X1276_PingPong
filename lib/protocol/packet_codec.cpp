@@ -44,12 +44,17 @@ uint32_t readU32(const uint8_t* p) {
            (static_cast<uint32_t>(p[3]) << 24);
 }
 
-/** @brief True when @p type is Telemetry, Ack, CommandResult, or Heartbeat. */
+/** @brief True when @p type is one of the MessageType values. */
 bool knownType(uint8_t type) {
     return type == static_cast<uint8_t>(MessageType::Telemetry) ||
            type == static_cast<uint8_t>(MessageType::Ack) ||
            type == static_cast<uint8_t>(MessageType::CommandResult) ||
-           type == static_cast<uint8_t>(MessageType::Heartbeat);
+           type == static_cast<uint8_t>(MessageType::Heartbeat) ||
+           type == static_cast<uint8_t>(MessageType::PairRequest) ||
+           type == static_cast<uint8_t>(MessageType::PairAccept) ||
+           type == static_cast<uint8_t>(MessageType::PairReject) ||
+           type == static_cast<uint8_t>(MessageType::Unpair) ||
+           type == static_cast<uint8_t>(MessageType::Ping);
 }
 
 /**
@@ -260,6 +265,62 @@ Status PacketCodec::readCommandResult(const uint8_t* payload,
     out->status = payload[4];
     out->detailLen = static_cast<uint8_t>(payloadLen - kResultPrefixBytes);
     out->detail = out->detailLen == 0 ? nullptr : payload + kResultPrefixBytes;
+    return Status::Ok;
+}
+
+Status PacketCodec::writePairAccept(uint8_t nodeId,
+                                   const uint8_t* mac,
+                                   uint32_t lastCommandId,
+                                   uint8_t* out,
+                                   size_t outCap,
+                                   uint8_t* outLen) const {
+    if (out == nullptr || outLen == nullptr || mac == nullptr) {
+        return Status::BadPayload;
+    }
+    constexpr uint8_t kBytes = 1 + kMacBytes + 4;
+    if (outCap < kBytes) {
+        return Status::Truncated;
+    }
+    out[0] = nodeId;
+    std::memcpy(out + 1, mac, kMacBytes);
+    writeU32(out + 1 + kMacBytes, lastCommandId);
+    *outLen = kBytes;
+    return Status::Ok;
+}
+
+Status PacketCodec::readPairAccept(const uint8_t* payload,
+                                  uint8_t payloadLen,
+                                  uint8_t* nodeId,
+                                  uint8_t* mac,
+                                  uint32_t* lastCommandId) const {
+    constexpr uint8_t kBytes = 1 + kMacBytes + 4;
+    if (payload == nullptr || nodeId == nullptr || mac == nullptr || lastCommandId == nullptr ||
+        payloadLen != kBytes) {
+        return Status::BadPayload;
+    }
+    *nodeId = payload[0];
+    std::memcpy(mac, payload + 1, kMacBytes);
+    *lastCommandId = readU32(payload + 1 + kMacBytes);
+    return Status::Ok;
+}
+
+Status PacketCodec::writePairReject(uint8_t reason, uint8_t* out, size_t outCap, uint8_t* outLen) const {
+    if (out == nullptr || outLen == nullptr) {
+        return Status::BadPayload;
+    }
+    if (outCap < 1) {
+        return Status::Truncated;
+    }
+    out[0] = reason;
+    *outLen = 1;
+    return Status::Ok;
+}
+
+Status PacketCodec::readPairReject(const uint8_t* payload, uint8_t payloadLen, uint8_t* reason) const {
+    if (payload == nullptr || reason == nullptr || payloadLen != 1) {
+        return Status::BadPayload;
+    }
+    *reason = payload[0];
     return Status::Ok;
 }
 
