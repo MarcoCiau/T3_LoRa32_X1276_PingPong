@@ -23,12 +23,19 @@ void test_message_type_ids(void) {
     TEST_ASSERT_EQUAL_UINT8(2, static_cast<uint8_t>(proto::MessageType::Ack));
     TEST_ASSERT_EQUAL_UINT8(3, static_cast<uint8_t>(proto::MessageType::CommandResult));
     TEST_ASSERT_EQUAL_UINT8(4, static_cast<uint8_t>(proto::MessageType::Heartbeat));
+    TEST_ASSERT_EQUAL_UINT8(5, static_cast<uint8_t>(proto::MessageType::PairRequest));
+    TEST_ASSERT_EQUAL_UINT8(6, static_cast<uint8_t>(proto::MessageType::PairAccept));
+    TEST_ASSERT_EQUAL_UINT8(7, static_cast<uint8_t>(proto::MessageType::PairReject));
+    TEST_ASSERT_EQUAL_UINT8(8, static_cast<uint8_t>(proto::MessageType::Unpair));
+    TEST_ASSERT_EQUAL_UINT8(9, static_cast<uint8_t>(proto::MessageType::Ping));
 }
 
 void test_id_limits(void) {
     TEST_ASSERT_EQUAL_UINT8(0, proto::kGatewayId);
     TEST_ASSERT_EQUAL_UINT8(1, proto::kMinNodeId);
     TEST_ASSERT_EQUAL_UINT8(10, proto::kMaxNodeId);
+    TEST_ASSERT_EQUAL_UINT8(0xFF, proto::kUnassignedId);
+    TEST_ASSERT_EQUAL_UINT8(6, proto::kMacBytes);
 }
 
 void test_status_codes(void) {

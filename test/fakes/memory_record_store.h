@@ -22,7 +22,7 @@ public:
     /** @brief Largest blob commit() will store. */
     static constexpr size_t kMaxBlobBytes = 16;
     /** @brief Number of distinct keys the table can hold. */
-    static constexpr size_t kCapacity = 32;
+    static constexpr size_t kCapacity = 64;
 
     /**
      * @brief Copy the blob at @p key when its stored size is @p len.
@@ -65,6 +65,20 @@ public:
             }
         }
         return false;
+    }
+
+    /**
+     * @brief Drop the blob at @p key.
+     * @return true when the key is already absent or was removed.
+     */
+    bool erase(uint16_t key) override {
+        Slot* slot = find(key);
+        if (slot == nullptr) {
+            return true;
+        }
+        slot->used = false;
+        slot->len = 0;
+        return true;
     }
 
 private:

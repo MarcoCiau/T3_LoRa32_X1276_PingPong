@@ -7,6 +7,7 @@
 
 #include "command_queue.h"
 #include "node_registry.h"
+#include "pairing_table.h"
 #include "radio_service.h"
 
 #include "../fakes/fake_clock.h"
@@ -34,14 +35,20 @@ struct Fixture {
     gateway::NodeRegistry registry;
     gateway::CommandQueue commands;
     FakeOutboundBuffer uplink;
+    gateway::PairingTable pairing;
     gateway::RadioService service;
 
     Fixture()
         : seq(rng),
           replay(store),
           commands(store),
-          service(radio, clock, codec, seq, replay, auth, registry, commands, uplink) {
+          pairing(store),
+          service(radio, clock, codec, seq, replay, auth, registry, commands, uplink, pairing) {
         clock.now = 5000;
+        uint8_t mac[proto::kMacBytes] = {2, 0, 0, 0, 0, 1};
+        uint8_t id = 0;
+        uint32_t last = 0;
+        (void)pairing.admit(mac, &id, &last);
     }
 };
 
@@ -97,6 +104,12 @@ void tearDown(void) {}
 
 void test_energy_body_is_stored_and_an_empty_body_is_still_acked(void) {
     Fixture fix;
+    uint8_t mac[proto::kMacBytes] = {2, 0, 0, 0, 0, 2};
+    uint8_t id = 0;
+    uint32_t last = 0;
+    setStatus(fix.pairing.admit(mac, &id, &last), proto::Status::Ok);
+    mac[5] = 3;
+    setStatus(fix.pairing.admit(mac, &id, &last), proto::Status::Ok);
     proto::EnergyReading reading = {};
     reading.voltageCentivolts = 23020;
     reading.currentMilliamps = 1001;
@@ -269,6 +282,57 @@ void test_command_result_completes_the_command_and_is_uplinked(void) {
     TEST_ASSERT_EQUAL_UINT16(3, fix.radio.txCount());
 }
 
+void test_closed_window_does_not_answer_a_pair_request(void) {
+    Fixture fix;
+    uint8_t mac[proto::kMacBytes] = {9, 8, 7, 6, 5, 4};
+    queueFrame(fix, proto::MessageType::PairRequest, 1, 0, mac, proto::kMacBytes, proto::kUnassignedId);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(0, fix.radio.txCount());
+}
+
+void test_open_window_assigns_an_id_and_ping_ack_carries_no_command(void) {
+    Fixture fix;
+    fix.pairing.openWindow(fix.clock.now);
+    uint8_t mac[proto::kMacBytes] = {9, 8, 7, 6, 5, 4};
+    queueFrame(fix, proto::MessageType::PairRequest, 1, 0, mac, proto::kMacBytes, proto::kUnassignedId);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(1, fix.radio.txCount());
+    proto::DecodedPacket accept = {};
+    setStatus(fix.codec.decode(fix.radio.txData(), fix.radio.txLen(), proto::kUnassignedId, false, &accept),
+              proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT8(static_cast<uint8_t>(proto::MessageType::PairAccept), static_cast<uint8_t>(accept.type));
+    uint8_t assigned = 0;
+    uint8_t echoed[proto::kMacBytes] = {};
+    uint32_t last = 1;
+    setStatus(fix.codec.readPairAccept(accept.payload, accept.payloadLen, &assigned, echoed, &last), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT8(2, assigned);
+    TEST_ASSERT_EQUAL_UINT32(0, last);
+    TEST_ASSERT_FALSE(fix.pairing.windowOpen(fix.clock.now));
+
+    uint32_t commandId = 0;
+    setStatus(fix.commands.enqueue(1, 0, nullptr, 0, &commandId), proto::Status::Ok);
+    queueFrame(fix, proto::MessageType::Ping, 1, 1, nullptr, 0, 1);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    const proto::DecodedPacket ack = txPacket(fix);
+    TEST_ASSERT_EQUAL_UINT8(0, ack.payloadLen);
+    TEST_ASSERT_EQUAL_UINT8(0, fix.uplink.count);
+    gateway::QueuedCommand pending = {};
+    TEST_ASSERT_TRUE(fix.commands.nextFor(1, &pending));
+}
+
+void test_unpair_frees_the_id(void) {
+    Fixture fix;
+    uint8_t mac[proto::kMacBytes] = {2, 0, 0, 0, 0, 1};
+    queueFrame(fix, proto::MessageType::Unpair, 1, 1, mac, proto::kMacBytes, 1);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(1, fix.radio.txCount());
+    TEST_ASSERT_FALSE(fix.pairing.paired(1));
+
+    queueTelemetry(fix, 2, 2);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(1, fix.radio.txCount());
+}
+
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
@@ -278,5 +342,8 @@ int main(int argc, char** argv) {
     RUN_TEST(test_pending_command_is_delivered_in_the_ack);
     RUN_TEST(test_duplicate_telemetry_is_acked_without_a_second_uplink);
     RUN_TEST(test_command_result_completes_the_command_and_is_uplinked);
+    RUN_TEST(test_closed_window_does_not_answer_a_pair_request);
+    RUN_TEST(test_open_window_assigns_an_id_and_ping_ack_carries_no_command);
+    RUN_TEST(test_unpair_frees_the_id);
     return UNITY_END();
 }
