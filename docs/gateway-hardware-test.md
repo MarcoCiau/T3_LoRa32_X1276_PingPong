@@ -47,7 +47,9 @@ Reset the board if the monitor missed the boot lines.
 [gateway] ack sent
 ```
 
-`ack sent` is printed only after the SX1276 interrupt says the ACK left the radio. The on-board LED turns on at that moment. The next node report prints a new sequence on this monitor. The node monitor does not print the ACK. Ids 2 through 10 print the same kind of line when those nodes check in.
+`ack sent` is printed only after the SX1276 interrupt says the ACK left the radio. The on-board LED turns on at that moment. The next node report prints a new sequence on this monitor. Ids 2 through 10 print the same kind of line when those nodes check in.
+
+A node does not check in until it is paired. Click the gateway PRG/BOOT button. The line `[gateway] pairing` stays open for 60 seconds. Click the node button in that window. This monitor prints `[gateway] paired node N`, and the next telemetry line is that id. A second click before the window ends closes it. Release the same button between 5 and 10 seconds to start Wi-Fi setup (`lp-gw-` plus the last two MAC bytes). Hold it for 10 seconds to erase paired nodes, the command queue, and stored Wi-Fi credentials, then reboot. A click is a release before 1 second, so a slow press does not pair, start setup, or reset. The node steps are in [node-hardware-test.md](node-hardware-test.md).
 
 ## Changing the band
 

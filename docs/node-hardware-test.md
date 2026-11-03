@@ -29,10 +29,23 @@ Reset the board if the monitor missed the boot lines.
 [node] radio begin
 [node] freq MHz 434.00
 [node] bw kHz 125.00 sf 9 cr 4/7 sync 0x12 power dBm 17
-[node] check-in node 1 every ms 60000
+[node] unpaired
 ```
 
-The first report leaves on the first `loop`. There is no per-packet line on the node monitor. The frame is telemetry: version 1, type telemetry, source node 1, destination gateway 0, plus the 15-byte mock energy body. The first sequence is 1 and the first counter is 1. A lab frame is 26 bytes. After an ACK, or after the retry budget, the next report waits 60 seconds.
+A node that already has a stored pairing prints `check-in node N every ms 60000` instead of `unpaired`.
+
+## Pair, range check, unpair
+
+The PRG/BOOT button is the user button. Hold it only after the app is running. Holding it through reset enters the ROM bootloader.
+
+1. Click the gateway button. Its serial line prints `[gateway] pairing` for 60 seconds.
+2. Click this node's button while that window is open. The node prints `[node] paired N` and then starts the 60 second check-in.
+3. A later click on a paired node prints `[node] ping ok` when the gateway ACK arrives, or `[node] ping fail` after one retry.
+4. Hold the node button for 3 seconds. The node prints `[node] unpaired` and stops telemetry.
+
+The LED blinks slowly during pairing, stays on for 2 seconds after a successful ping, and blinks three times after a failed ping.
+
+The first report leaves on the loop after `[node] paired N`. There is no per-packet line on the node monitor. The frame is telemetry: version 1, type telemetry, source the assigned id, destination gateway 0, plus the 15-byte mock energy body. After an ACK, or after the retry budget, the next report waits 60 seconds. An unpaired node does not transmit telemetry.
 
 `[node] radio fail` means the SX1276 did not accept the profile. `[node] nvs fail` means the record store did not open. Check the antenna and that this is the `node` environment, not the ping-pong environment.
 
@@ -40,9 +53,9 @@ The first report leaves on the first `loop`. There is no per-packet line on the 
 
 Flash and power the gateway first. The gateway steps are in [gateway-hardware-test.md](gateway-hardware-test.md).
 
-1. Leave the gateway on `[gateway] listening`.
-2. Reset the node and wait for `[node] check-in node 1 every ms 60000`.
-3. On the gateway monitor, expect a telemetry line for node 1, then `[gateway] ack sent`.
+1. Leave the gateway on `[gateway] listening`, then click its button so it prints `[gateway] pairing`.
+2. Click the node button. Wait for `[node] paired 1` on a gateway that has no nodes yet. The node then prints the 60 second check-in line.
+3. On the gateway monitor, expect `[gateway] paired node 1`, a telemetry line for node 1, then `[gateway] ack sent`.
 4. Leave both boards powered. The node sends again about 60 seconds after each accepted ACK. The gateway prints each new sequence.
 
 A sniffer set to the same profile should see a 26-byte frame for each report.
