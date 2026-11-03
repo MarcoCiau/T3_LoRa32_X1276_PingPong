@@ -60,3 +60,15 @@ bool PreferencesRecordStore::commit(uint16_t key, const uint8_t* src, size_t len
     }
     return prefs_.putBytes(name, src, len) == len;
 }
+
+bool PreferencesRecordStore::erase(uint16_t key) {
+    if (!open_) {
+        return false;
+    }
+    char name[5];
+    formatKey(key, name);
+    if (!prefs_.isKey(name)) {
+        return true;
+    }
+    return prefs_.remove(name);
+}

@@ -47,6 +47,9 @@ public:
      */
     bool commit(uint16_t key, const uint8_t* src, size_t len) override;
 
+    /** @copydoc RecordStorePort::erase */
+    bool erase(uint16_t key) override;
+
 private:
     /** @brief Write @p key as four uppercase hex characters. @p out must hold 5 bytes. */
     static void formatKey(uint16_t key, char out[5]);
