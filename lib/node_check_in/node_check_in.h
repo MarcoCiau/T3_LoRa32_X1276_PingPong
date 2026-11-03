@@ -91,6 +91,32 @@ public:
      */
     bool inIntervalWait() const;
 
+    /**
+     * @brief Stop telemetry until adopt() or suspend(false).
+     *
+     * While suspended, poll() does not touch the radio.
+     * @param on True to suspend.
+     */
+    void suspend(bool on);
+
+    /**
+     * @brief Store a paired identity and allow the next poll() to send telemetry.
+     * @param nodeId Assigned id, 1..proto::kMaxNodeId.
+     * @param lastCommandId Last completed command.
+     * @param hasLast True when @p lastCommandId was stored.
+     */
+    void adopt(uint8_t nodeId, uint32_t lastCommandId, bool hasLast);
+
+    /**
+     * @brief Take the next seq and replay counter shared with telemetry.
+     *
+     * A retry of the same ping reuses the returned values and does not call this again.
+     * @param seq Receives the sequence. Required.
+     * @param counter Receives the replay counter. Required.
+     * @return Status::Ok, or the sequence manager status.
+     */
+    proto::Status takeSend(uint16_t* seq, uint32_t* counter);
+
 private:
     /** @brief What poll() is waiting on. */
     enum class Phase : uint8_t {
@@ -157,6 +183,7 @@ private:
     Phase phase_ = Phase::WaitInterval;
     Outbound outbound_ = Outbound::Telemetry;
     bool started_ = false;
+    bool suspended_ = false;
     bool hasLastCommand_ = false;
     uint32_t waitStarted_ = 0;
     uint32_t windowStarted_ = 0;

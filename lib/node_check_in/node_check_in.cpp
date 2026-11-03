@@ -98,6 +98,9 @@ NodeCheckIn::NodeCheckIn(RadioPort& radio,
       nodeId_(nodeId),
       intervalMs_(intervalMs) {
     (void)rng;
+    if (nodeId_ < proto::kMinNodeId || nodeId_ > proto::kMaxNodeId) {
+        return;
+    }
     uint8_t stored[kCommandIdBytes] = {};
     if (records_.read(proto::lastCommandIdKey(nodeId_), stored, kCommandIdBytes)) {
         hasLastCommand_ = true;
@@ -106,6 +109,9 @@ NodeCheckIn::NodeCheckIn(RadioPort& radio,
 }
 
 proto::Status NodeCheckIn::poll() {
+    if (suspended_) {
+        return proto::Status::Ok;
+    }
     const uint32_t now = clock_.millis();
     if (phase_ == Phase::WaitInterval) {
         if (started_ && static_cast<uint32_t>(now - waitStarted_) < intervalMs_) {
@@ -165,6 +171,40 @@ proto::Status NodeCheckIn::poll() {
 
 bool NodeCheckIn::inIntervalWait() const {
     return started_ && phase_ == Phase::WaitInterval;
+}
+
+void NodeCheckIn::suspend(bool on) {
+    suspended_ = on;
+    if (!on) {
+        return;
+    }
+    phase_ = Phase::WaitInterval;
+    started_ = true;
+    waitStarted_ = clock_.millis();
+}
+
+void NodeCheckIn::adopt(uint8_t nodeId, uint32_t lastCommandId, bool hasLast) {
+    nodeId_ = nodeId;
+    lastCommandId_ = lastCommandId;
+    hasLastCommand_ = hasLast;
+    suspended_ = false;
+    started_ = false;
+    phase_ = Phase::WaitInterval;
+}
+
+proto::Status NodeCheckIn::takeSend(uint16_t* seq, uint32_t* counter) {
+    if (seq == nullptr || counter == nullptr) {
+        return proto::Status::BadPayload;
+    }
+    uint16_t next = 0;
+    const proto::Status started = seq_.beginTransmit(proto::kGatewayId, &next);
+    if (started != proto::Status::Ok) {
+        return started;
+    }
+    counter_ += 1;
+    *seq = next;
+    *counter = counter_;
+    return proto::Status::Ok;
 }
 
 proto::Status NodeCheckIn::beginReport(uint32_t now) {
