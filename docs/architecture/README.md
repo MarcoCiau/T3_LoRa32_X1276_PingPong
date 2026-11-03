@@ -16,6 +16,7 @@ No mesh routing, no LoRaWAN network server, and no general MAC layer. The gatewa
 | --- | --- |
 | [system.md](system.md) | Topology, check-in transaction, failure isolation |
 | [protocol.md](protocol.md) | Message types, draft header, reliability and security rules |
+| [pairing.md](pairing.md) | Button gestures, pairing, unpair, range ping, gateway Wi-Fi setup and factory reset |
 | [firmware.md](firmware.md) | Module boundaries for node and gateway |
 | [hardware.md](hardware.md) | Pins and radio init taken from this PlatformIO project |
 | [agent-development.md](agent-development.md) | C++ and dependency-injection rules, and the one-task-at-a-time build checklist |
@@ -36,7 +37,8 @@ No mesh routing, no LoRaWAN network server, and no general MAC layer. The gatewa
 
 - Exact field widths, endianness, maximum payload, and version rules. The header in [protocol.md](protocol.md) is a draft.
 - AES-CCM with a unique key per device, a nonce that is never reused with that key, and a persistent replay counter.
-- Provisioning of device identity and keys.
+- Node id assignment by the button pairing in [pairing.md](pairing.md). The bench images still use a compiled id until that firmware is added.
+- Per-device keys. Pairing does not create or send them.
 
 **Leave out until a test shows they are needed**
 

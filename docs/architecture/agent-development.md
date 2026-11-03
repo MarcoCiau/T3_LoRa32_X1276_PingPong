@@ -420,3 +420,5 @@ T12 and T13 need the board. T0–T11, T14’s reconnect schedule, T15’s JSON m
 ## Later, not a current task
 
 Deep sleep, gateway time slots, Heartbeat, mixed protocol versions, wear-aware flash layout, ESP-IDF, and unsolicited gateway transmits stay out of T0–T18. The energy bench is a separate list, F1–F4, in [full-bench-tasks.md](full-bench-tasks.md). Do not fold those tasks back into T18.
+
+Button pairing, range ping, node unpair, gateway Wi-Fi setup, and gateway factory reset are specified in [pairing.md](pairing.md). They are not a T0–T18 task and not an F1–F4 task. Implement them only when the user asks, after reading that document. Do not invent a second button timing.

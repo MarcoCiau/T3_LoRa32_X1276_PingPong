@@ -32,14 +32,17 @@ radio.setPacketReceivedAction(onRadioIrq);
 | Radio DIO0 | 26 | TX/RX done IRQ |
 | Radio DIO1 | 33 | Passed to RadioLib as the fourth IRQ pin |
 | Radio DIO2 | 32 | Defined, unused by `Module` |
-| LED | 25 | Active high |
+| LED | 25 | Active high. Gesture feedback when the OLED is missing. |
+| User button | 0 | PRG/BOOT, active low, internal pull-up. The only gesture input. See [pairing.md](pairing.md). |
 | ADC | 35 | Battery / board ADC, unused by the radio loop |
 | SD MOSI | 15 | Defined, unused |
 | SD MISO | 2 | Defined, unused |
 | SD SCLK | 14 | Defined, unused |
 | SD CS | 13 | Defined, unused |
 
-OLED: SSD1306 128×64, I2C address `0x3C`, no reset pin (`src/ui.cpp`). The display is optional for the product; the radio must boot when the panel is missing.
+OLED: SSD1306 128×64, I2C address `0x3C`, no reset pin (`src/ui.cpp`). The display is optional for the product; the radio must boot when the panel is missing. Gesture feedback falls back to the LED.
+
+The RST pad is a hardware reset. It is not a pairing, unpair, Wi-Fi, or factory-reset gesture. GPIO 0 held while the ESP32 leaves reset starts the ROM serial bootloader. Gesture timing in [pairing.md](pairing.md) starts only after the application is running.
 
 ## Radio profile in this tree
 

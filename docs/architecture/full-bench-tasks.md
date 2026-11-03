@@ -2,7 +2,7 @@
 
 These tasks add the energy telemetry the lab test in [full-bench-test.md](../full-bench-test.md) needs. T0–T18 stay as they are. Do one task, verify, stop, and do not start the next one.
 
-Node ids are not assigned on the air. `kNodeId` in `src/node/main.cpp` is the id. The gateway already accepts any sender from 1 to 10. Do not add a join protocol.
+Node ids are not assigned on the air in these tasks. `kNodeId` in `src/node/main.cpp` is the id. The gateway already accepts any sender from 1 to 10. Pairing is specified in [pairing.md](pairing.md) and is not part of F1–F4.
 
 Doxygen comments belong on every new or edited `.h` and `.cpp`. Suggest a conventional commit message. Do not commit unless asked.
 
