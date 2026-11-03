@@ -39,6 +39,8 @@ constexpr uint8_t kRadioDio2Pin = 32;
 
 /** @brief On-board LED, active high. */
 constexpr uint8_t kBoardLedPin = 25;
+/** @brief PRG/BOOT button, active low. Gesture timing starts after the app is running. */
+constexpr uint8_t kUserButtonPin = 0;
 
 /** @brief Lab center frequency in MHz. setFrequency() programs this value. */
 constexpr float kRadioFrequencyMhz = 434.0f;
