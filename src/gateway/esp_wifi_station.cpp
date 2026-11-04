@@ -14,10 +14,17 @@ bool EspWifiStation::isConnected() const {
 }
 
 void EspWifiStation::beginConnect(const char* ssid, const char* password) {
+    if (ssid == nullptr || ssid[0] == '\0') {
+        return;
+    }
+    WiFi.persistent(false);
+    WiFi.setAutoReconnect(true);
     if (WiFi.getMode() != WIFI_STA) {
         WiFi.mode(WIFI_STA);
     }
-    WiFi.begin(ssid, password);
+    WiFi.begin(ssid, password != nullptr ? password : "");
+    Serial.print(F("[gateway] wifi join "));
+    Serial.println(ssid);
 }
 
 }  // namespace gateway
