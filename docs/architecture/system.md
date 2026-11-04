@@ -80,6 +80,7 @@ The radio service has its own lifetime from the uplink client.
 - Radio receive, ACK, and command delivery continue while Wi-Fi or MQTT is down, and while Wi-Fi setup from [pairing.md](pairing.md) is on screen.
 - Telemetry and results that cannot be uploaded sit in a bounded outbound buffer. When the buffer is full, drop the oldest telemetry first and count the drop. Do not drop an unsent command result ahead of telemetry if the buffer must choose.
 - Reconnect uses backoff. Network calls must not run inside the radio interrupt or inside the check-in deadline.
+- MQTT starts only after the station has an IP address. Losing that address stops the client. While the address is held, the client keeps retrying the broker.
 
 ## Collisions
 
