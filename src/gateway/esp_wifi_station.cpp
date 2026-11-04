@@ -10,7 +10,18 @@
 namespace gateway {
 
 bool EspWifiStation::isConnected() const {
-    return WiFi.status() == WL_CONNECTED;
+    if (WiFi.status() != WL_CONNECTED) {
+        return false;
+    }
+    const IPAddress ip = WiFi.localIP();
+    if (ip == IPAddress(0, 0, 0, 0)) {
+        return false;
+    }
+    const wifi_mode_t mode = WiFi.getMode();
+    if ((mode == WIFI_AP || mode == WIFI_AP_STA) && ip == WiFi.softAPIP()) {
+        return false;
+    }
+    return true;
 }
 
 void EspWifiStation::beginConnect(const char* ssid, const char* password) {
