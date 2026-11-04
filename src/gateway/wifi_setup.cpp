@@ -33,10 +33,12 @@ void WifiSetup::poll() {
     portal_.poll();
     char ssid[kSsidCap] = {};
     char password[kPasswordCap] = {};
-    if (portal_.takePosted(ssid, sizeof(ssid), password, sizeof(password))) {
-        if (ssid[0] != '\0' && secrets_.save(ssid, password)) {
+    char token[kTokenCap] = {};
+    if (portal_.takePosted(ssid, sizeof(ssid), password, sizeof(password), token, sizeof(token))) {
+        if (ssid[0] != '\0' && secrets_.save(ssid, password, token)) {
             portal_.stop();
             active_ = false;
+            saved_ = true;
             wifi_.reconfigure(ssid, password);
             return;
         }
@@ -56,6 +58,12 @@ void WifiSetup::cancel() {
 
 bool WifiSetup::active() const {
     return active_;
+}
+
+bool WifiSetup::takeSaved() {
+    const bool saved = saved_;
+    saved_ = false;
+    return saved;
 }
 
 }  // namespace gateway

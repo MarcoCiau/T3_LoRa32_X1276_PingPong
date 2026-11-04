@@ -18,7 +18,7 @@ namespace gateway {
 class WifiLink;
 
 /**
- * @brief SoftAP that collects one SSID and password.
+ * @brief SoftAP that collects the station credentials and a ThingsBoard device id.
  */
 class WifiPortal {
 public:
@@ -42,13 +42,22 @@ public:
      * @param ssidCap Capacity of @p ssid, including the NUL.
      * @param password Receives the password. Required.
      * @param passwordCap Capacity of @p password, including the NUL.
+     * @param token Receives the ThingsBoard device id. Required. May come back empty.
+     * @param tokenCap Capacity of @p token, including the NUL.
      * @return true when a form was waiting. The form is then forgotten.
      */
-    virtual bool takePosted(char* ssid, size_t ssidCap, char* password, size_t passwordCap) = 0;
+    virtual bool takePosted(char* ssid,
+                            size_t ssidCap,
+                            char* password,
+                            size_t passwordCap,
+                            char* token,
+                            size_t tokenCap) = 0;
 };
 
 /**
- * @brief SSID and password kept outside the 16-byte record store.
+ * @brief SSID, password, and ThingsBoard device id kept outside the 16-byte record store.
+ *
+ * The broker host is not stored here. It stays the compile-time LP_MQTT_HOST.
  */
 class WifiSecrets {
 public:
@@ -56,19 +65,26 @@ public:
 
     /**
      * @brief Copy the stored credentials.
-     * @return false when none are stored or a pointer is null.
+     * @param token Receives the device id. May be empty when only Wi-Fi was stored.
+     * @return false when no SSID is stored or a pointer is null.
      */
-    virtual bool load(char* ssid, size_t ssidCap, char* password, size_t passwordCap) = 0;
+    virtual bool load(char* ssid,
+                      size_t ssidCap,
+                      char* password,
+                      size_t passwordCap,
+                      char* token,
+                      size_t tokenCap) = 0;
 
     /**
      * @brief Replace the stored credentials.
      * @param ssid Station name. Empty is rejected.
      * @param password Station secret. Empty is an open network.
+     * @param token ThingsBoard device id. Empty clears the stored id.
      * @return false when @p ssid is null or empty.
      */
-    virtual bool save(const char* ssid, const char* password) = 0;
+    virtual bool save(const char* ssid, const char* password, const char* token) = 0;
 
-    /** @brief Delete the stored credentials. */
+    /** @brief Delete the stored credentials and the device id. */
     virtual bool clear() = 0;
 };
 
@@ -77,6 +93,7 @@ public:
  *
  * begin() starts the portal. A click should call cancel(). A posted form is saved
  * and then WifiLink::reconfigure() joins that network. Cancel keeps the previous secrets.
+ * The ThingsBoard device id is stored with the credentials. The broker host is not.
  */
 class WifiSetup {
 public:
@@ -86,6 +103,8 @@ public:
     static constexpr size_t kSsidCap = 33;
     /** @brief Longest password stored, excluding the NUL. */
     static constexpr size_t kPasswordCap = 65;
+    /** @brief Longest ThingsBoard device id stored, excluding the NUL. */
+    static constexpr size_t kTokenCap = 65;
 
     /**
      * @brief Bind the session.
@@ -109,6 +128,12 @@ public:
     /** @brief True between begin() and a form, cancel, or timeout. */
     bool active() const;
 
+    /**
+     * @brief True once after a form was stored and the station join was started.
+     * A later call returns false until the next saved form.
+     */
+    bool takeSaved();
+
 private:
     ClockPort& clock_;
     WifiPortal& portal_;
@@ -116,6 +141,7 @@ private:
     WifiLink& wifi_;
     const char* apName_;
     bool active_ = false;
+    bool saved_ = false;
     uint32_t startedAt_ = 0;
 };
 
