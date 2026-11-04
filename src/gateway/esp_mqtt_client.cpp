@@ -9,6 +9,7 @@
 
 #include "mqtt_service.h"
 
+#include <Arduino.h>
 #include <mqtt_client.h>
 
 #include <cstring>
@@ -55,32 +56,52 @@ bool EspMqttClient::connected() const {
 }
 
 bool EspMqttClient::beginSession(const MqttSettings& settings) {
-    if (handle_ != nullptr) {
+    if (running_) {
         return true;
     }
-    if (settings.host == nullptr || settings.host[0] == '\0') {
+    if (lastFailMs_ != 0 && static_cast<uint32_t>(millis() - lastFailMs_) < 5000) {
         return false;
     }
-    esp_mqtt_client_config_t config = {};
-    config.event_handle = onMqttEvent;
-    config.host = settings.host;
-    config.port = settings.port;
-    config.client_id = settings.clientId;
-    config.username = settings.username;
-    config.password = settings.password == nullptr ? "" : settings.password;
-    config.user_context = this;
-    config.keepalive = 60;
-    config.disable_auto_reconnect = false;
-    config.buffer_size = 512;
-    esp_mqtt_client_handle_t created = esp_mqtt_client_init(&config);
-    if (created == nullptr || esp_mqtt_client_start(created) != ESP_OK) {
-        if (created != nullptr) {
-            esp_mqtt_client_destroy(created);
+    if (handle_ == nullptr) {
+        if (settings.host == nullptr || settings.host[0] == '\0') {
+            return false;
         }
+        esp_mqtt_client_config_t config = {};
+        config.event_handle = onMqttEvent;
+        config.host = settings.host;
+        config.port = settings.port;
+        config.client_id = settings.clientId;
+        config.username = settings.username;
+        config.password = settings.password == nullptr ? "" : settings.password;
+        config.user_context = this;
+        config.keepalive = 60;
+        config.disable_auto_reconnect = false;
+        config.reconnect_timeout_ms = 5000;
+        config.buffer_size = 512;
+        esp_mqtt_client_handle_t created = esp_mqtt_client_init(&config);
+        if (created == nullptr) {
+            lastFailMs_ = millis();
+            return false;
+        }
+        handle_ = created;
+    }
+    if (esp_mqtt_client_start(clientHandle(handle_)) != ESP_OK) {
+        lastFailMs_ = millis();
         return false;
     }
-    handle_ = created;
+    lastFailMs_ = 0;
+    running_ = true;
+    Serial.println(F("[gateway] mqtt connect"));
     return true;
+}
+
+void EspMqttClient::endSession() {
+    if (handle_ != nullptr && running_) {
+        esp_mqtt_client_stop(clientHandle(handle_));
+        Serial.println(F("[gateway] mqtt stop"));
+    }
+    running_ = false;
+    connected_.store(false, std::memory_order_release);
 }
 
 void EspMqttClient::poll() {}
