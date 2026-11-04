@@ -205,6 +205,15 @@ public:
     void begin();
 
     /**
+     * @brief Use @p username as the ThingsBoard device id and arm the service again.
+     *
+     * The broker host is unchanged. An empty @p username leaves the previous username.
+     * A session that has not started yet uses the new id. A session already accepted
+     * by the broker keeps that connection until reboot.
+     */
+    void setUsername(const char* username);
+
+    /**
      * @brief Advance the session, accept one RPC, and publish one uplink JSON document.
      *
      * A disconnected client starts one session and returns. A failed publish puts the

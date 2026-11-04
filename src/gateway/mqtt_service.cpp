@@ -306,6 +306,13 @@ void MqttService::begin() {
     sessionStarted_ = false;
 }
 
+void MqttService::setUsername(const char* username) {
+    if (username != nullptr && username[0] != '\0') {
+        settings_.username = username;
+    }
+    begin();
+}
+
 void MqttService::poll() {
     client_.poll();
     if (!enabled_ || !wifi_.connected()) {
