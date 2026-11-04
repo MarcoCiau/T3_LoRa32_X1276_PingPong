@@ -115,6 +115,13 @@ public:
      */
     virtual bool beginSession(const MqttSettings& settings) = 0;
 
+    /**
+     * @brief Stop dialing the broker.
+     *
+     * Safe when no session exists. The next beginSession() may start again.
+     */
+    virtual void endSession() = 0;
+
     /** @brief Let the client move a session forward. Must not block the caller. */
     virtual void poll() = 0;
 
@@ -216,8 +223,9 @@ public:
     /**
      * @brief Advance the session, accept one RPC, and publish one uplink JSON document.
      *
-     * A disconnected client starts one session and returns. A failed publish puts the
-     * uplink record back on the queue.
+     * A session starts only after the station has an IP. Losing that address stops
+     * the client so it does not dial early. While the address is held, a down
+     * client is started again. A failed publish puts the uplink record back.
      */
     void poll();
 
@@ -249,8 +257,11 @@ public:
     /** @brief True after MQTT_EVENT_CONNECTED until MQTT_EVENT_DISCONNECTED. */
     bool connected() const override;
 
-    /** @brief Start the ESP-MQTT client. A second call keeps the existing client. */
+    /** @brief Start the ESP-MQTT client. A later call starts it again after endSession(). */
     bool beginSession(const MqttSettings& settings) override;
+
+    /** @brief Stop the ESP-MQTT task so it cannot dial without a station address. */
+    void endSession() override;
 
     /** @brief The ESP-MQTT task services the socket. This call does not wait. */
     void poll() override;
@@ -281,8 +292,12 @@ public:
     void storeDownlink(const uint8_t* data, uint16_t len);
 
 private:
-    /** @brief esp_mqtt_client_handle_t. Null until beginSession() starts the task. */
+    /** @brief esp_mqtt_client_handle_t. Null until beginSession() creates the client. */
     void* handle_ = nullptr;
+    /** @brief True while the ESP-MQTT task is allowed to dial. */
+    bool running_ = false;
+    /** @brief millis() of the last start failure. Zero means none. */
+    uint32_t lastFailMs_ = 0;
     /** @brief Set from the MQTT task. poll() only reads it. */
     std::atomic<bool> connected_{false};
     /** @brief True while downlink_ holds an RPC the loop has not copied yet. */

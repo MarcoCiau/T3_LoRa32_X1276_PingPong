@@ -28,6 +28,7 @@ public:
     bool up = false;
     bool acceptPublish = true;
     uint32_t sessions = 0;
+    uint32_t stops = 0;
     uint32_t publishes = 0;
     char topic[64] = {};
     char payload[gateway::kMqttJsonBytes] = {};
@@ -42,6 +43,8 @@ public:
         sessions += 1;
         return true;
     }
+
+    void endSession() override { stops += 1; }
 
     void poll() override {}
 
@@ -285,6 +288,38 @@ void test_rpc_downlink_is_stored_on_the_command_queue(void) {
     TEST_ASSERT_EQUAL_UINT32(0, client.publishes);
 }
 
+void test_mqtt_waits_for_wifi_and_restarts_after_the_address_returns(void) {
+    FakeClock clock;
+    FakeStation station;
+    gateway::WifiLink wifi(clock, station, "lab", "");
+    wifi.begin();
+    gateway::OutboundQueue uplink;
+    MemoryRecordStore store;
+    gateway::CommandQueue commands(store);
+    FakeMqtt client;
+    gateway::MqttService service(wifi, uplink, commands, client, enabledSettings());
+    service.begin();
+
+    service.poll();
+    TEST_ASSERT_EQUAL_UINT32(0, client.sessions);
+
+    station.up = true;
+    service.poll();
+    TEST_ASSERT_EQUAL_UINT32(1, client.sessions);
+    service.poll();
+    TEST_ASSERT_EQUAL_UINT32(1, client.sessions);
+    TEST_ASSERT_EQUAL_UINT32(0, client.stops);
+
+    station.up = false;
+    service.poll();
+    TEST_ASSERT_EQUAL_UINT32(1, client.stops);
+    TEST_ASSERT_EQUAL_UINT32(1, client.sessions);
+
+    station.up = true;
+    service.poll();
+    TEST_ASSERT_EQUAL_UINT32(2, client.sessions);
+}
+
 int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
@@ -300,5 +335,6 @@ int main(int argc, char** argv) {
     RUN_TEST(test_poll_publishes_one_record_and_leaves_the_rest);
     RUN_TEST(test_failed_publish_puts_the_record_back);
     RUN_TEST(test_rpc_downlink_is_stored_on_the_command_queue);
+    RUN_TEST(test_mqtt_waits_for_wifi_and_restarts_after_the_address_returns);
     return UNITY_END();
 }

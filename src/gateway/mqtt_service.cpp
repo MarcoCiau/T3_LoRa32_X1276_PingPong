@@ -315,13 +315,20 @@ void MqttService::setUsername(const char* username) {
 
 void MqttService::poll() {
     client_.poll();
-    if (!enabled_ || !wifi_.connected()) {
+    if (!enabled_) {
         return;
     }
-    if (!client_.connected()) {
-        if (!sessionStarted_) {
-            sessionStarted_ = client_.beginSession(settings_);
+    if (!wifi_.connected()) {
+        if (sessionStarted_) {
+            client_.endSession();
+            sessionStarted_ = false;
         }
+        return;
+    }
+    if (!sessionStarted_) {
+        sessionStarted_ = client_.beginSession(settings_);
+    }
+    if (!sessionStarted_ || !client_.connected()) {
         return;
     }
     acceptOneDownlink();
