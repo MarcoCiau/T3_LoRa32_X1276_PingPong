@@ -9,6 +9,7 @@
  */
 
 #include <Arduino.h>
+#include <WiFi.h>
 
 #include "board_profile.h"
 #include "button_gesture.h"
@@ -126,17 +127,20 @@ struct GatewayApp {
     gateway::EspMqttClient mqttClient;
     gateway::MqttService mqtt;
     char apName[16];
+    char tbId[gateway::WifiSetup::kTokenCap] = {};
     ButtonGesture button;
     gateway::WifiSecrets& secrets;
     gateway::WifiPortal& portal;
     gateway::WifiSetup setup;
     bool pendingReset = false;
+    bool wifiWasUp = false;
 
     /**
      * @brief Bind the coordinator to @p store.
      *
      * Wi-Fi starts from NVS when a setup form has been saved, and otherwise from
-     * the compile-time SSID. MQTT uses the ThingsBoard CE placeholders.
+     * the compile-time SSID. The ThingsBoard device id comes from that form.
+     * The broker host stays the compile-time LP_MQTT_HOST.
      * @param store Open NVS record store. Must outlive this object.
      */
     explicit GatewayApp(PreferencesRecordStore& store)
@@ -159,11 +163,29 @@ struct GatewayApp {
         std::snprintf(apName, sizeof(apName), "lp-gw-%02X%02X", mac[4], mac[5]);
     }
 
+    /** @brief Copy @p token into tbId and point MQTT at it. */
+    void applyToken(const char* token) {
+        size_t i = 0;
+        if (token != nullptr) {
+            while (i + 1 < sizeof(tbId) && token[i] != '\0') {
+                tbId[i] = token[i];
+                ++i;
+            }
+        }
+        tbId[i] = '\0';
+        mqtt.setUsername(tbId[0] != '\0' ? tbId : gateway::kMqttSettings.username);
+        if (tbId[0] != '\0') {
+            Serial.println(F("[gateway] thingsboard id stored"));
+        }
+    }
+
     /** @brief Join the stored network, or the compile-time SSID when NVS is empty. */
     void startNetwork() {
         char ssid[gateway::WifiSetup::kSsidCap] = {};
         char password[gateway::WifiSetup::kPasswordCap] = {};
-        if (secrets.load(ssid, sizeof(ssid), password, sizeof(password))) {
+        char token[gateway::WifiSetup::kTokenCap] = {};
+        if (secrets.load(ssid, sizeof(ssid), password, sizeof(password), token, sizeof(token))) {
+            applyToken(token);
             wifi.reconfigure(ssid, password);
             return;
         }
@@ -241,7 +263,8 @@ void loop() {
         app->pairing.closeWindow();
         app->setup.begin();
         Serial.print(F("[gateway] wifi setup "));
-        Serial.println(app->apName);
+        Serial.print(app->apName);
+        Serial.println(F(" http://192.168.4.1"));
     } else if (gesture == Gesture::FactoryReset) {
         app->pendingReset = true;
         Serial.println(F("[gateway] factory reset"));
@@ -256,8 +279,26 @@ void loop() {
     }
 
     app->setup.poll();
+    if (app->setup.takeSaved()) {
+        char ssid[gateway::WifiSetup::kSsidCap] = {};
+        char password[gateway::WifiSetup::kPasswordCap] = {};
+        char token[gateway::WifiSetup::kTokenCap] = {};
+        if (app->secrets.load(ssid, sizeof(ssid), password, sizeof(password), token, sizeof(token))) {
+            app->applyToken(token);
+        }
+    }
     app->wifi.setPaused(app->setup.active());
     app->wifi.poll();
+    if (app->wifi.connected()) {
+        if (!app->wifiWasUp) {
+            app->wifiWasUp = true;
+            Serial.print(F("[gateway] wifi connected "));
+            Serial.println(WiFi.localIP());
+        }
+    } else if (app->wifiWasUp) {
+        app->wifiWasUp = false;
+        Serial.println(F("[gateway] wifi down"));
+    }
     app->mqtt.poll();
 
     const HoldHint hint = app->button.hint(now);
