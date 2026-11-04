@@ -44,7 +44,7 @@ firmware/
 | `mqtt_service` | Map backend messages onto the queue and ship buffered uplinks | Sit on the check-in path |
 | `button` | Time one press and emit one gesture | Transmit, parse packets, or erase flash |
 | `pairing` | Windows, id assignment, unpair, range ping | Run from the radio IRQ, or open Wi-Fi setup |
-| `wifi_setup` | Replace stored SSID and password from the Wi-Fi gesture | Assign a node id, or erase the pairing table |
+| `wifi_setup` | Replace stored SSID, password, and ThingsBoard device id from the Wi-Fi gesture, then join that SSID | Assign a node id, or erase the pairing table |
 
 Shared protocol code is linked by both firmwares. It is not a third Arduino sketch.
 
@@ -75,7 +75,7 @@ Minimum records:
 - Node: paired flag, assigned id, last completed `command_id`.
 - Gateway queue: command id, target node, type, body, state.
 - Gateway outbound buffer: telemetry and results waiting for MQTT/HTTP.
-- Gateway Wi-Fi: SSID and password. Empty means the compile-time values.
+- Gateway Wi-Fi: SSID, password, and ThingsBoard device id. Empty SSID means the compile-time values. The broker host stays `LP_MQTT_HOST`.
 
 Use a wear-aware approach (append or record slots, not a full rewrite on every packet) once the prototype leaves the bench. The interface is “commit this record”; the flash layout can change behind it.
 

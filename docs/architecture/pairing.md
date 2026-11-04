@@ -94,7 +94,7 @@ Show the result on the OLED when the panel is present. The LED is the fallback: 
 The 5 s–10 s release starts setup. It cancels an open pairing window. Check-ins from nodes already paired continue; `PairRequest` is ignored until setup ends.
 
 1. Credentials live in NVS. Empty NVS keeps the compile-time `kWifiSsid` and `kWifiPassword`. An empty SSID still leaves the station down.
-2. Setup starts a SoftAP named `lp-gw-` plus the last two MAC bytes, and serves one form for SSID and password. Those two strings are written to NVS, then the gateway returns to station mode.
+2. Setup starts a SoftAP named `lp-gw-` plus the last two MAC bytes, and serves one form for SSID, password, and the ThingsBoard device id. Those strings are written to NVS, then the gateway returns to station mode and joins that SSID. The broker host stays the compile-time `LP_MQTT_HOST`.
 3. A click, or 5 minutes with no write, cancels setup and keeps the previous credentials.
 4. Setup does not erase paired nodes, the command queue, or replay counters.
 
@@ -116,7 +116,7 @@ Gateway, one record per paired id `1`–`10`: assigned flag, 6-byte MAC, replay 
 
 Node: paired flag, assigned id, last completed `command_id`. The MAC is read from the chip, not stored as the identity source.
 
-Gateway Wi-Fi NVS: SSID and password. Factory reset deletes this record.
+Gateway Wi-Fi NVS: SSID, password, and ThingsBoard device id. Factory reset deletes this record. The broker host is not stored.
 
 ## Prove this when pairing is implemented
 
