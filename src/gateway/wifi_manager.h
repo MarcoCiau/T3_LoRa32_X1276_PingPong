@@ -37,7 +37,7 @@ class WifiStation {
 public:
     virtual ~WifiStation() = default;
 
-    /** @brief True when the station has an association. */
+    /** @brief True when the station has an IP address. Association alone is not enough. */
     virtual bool isConnected() const = 0;
 
     /**
@@ -77,7 +77,7 @@ public:
      */
     void poll();
 
-    /** @brief True when the link is enabled and the station reports an association. */
+    /** @brief True when the link is enabled and the station has an IP address. */
     bool connected() const;
 
     /**
@@ -116,7 +116,7 @@ private:
  */
 class EspWifiStation final : public WifiStation {
 public:
-    /** @brief True when WiFi.status() is WL_CONNECTED. */
+    /** @brief True when the station status is connected and localIP() is a station address. */
     bool isConnected() const override;
 
     /** @brief Switch to STA mode if needed and call WiFi.begin(). */
