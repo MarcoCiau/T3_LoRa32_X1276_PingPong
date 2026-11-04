@@ -19,8 +19,9 @@ namespace {
 constexpr char kNamespace[] = "lpwifi";
 constexpr char kPage[] =
     "<!doctype html><html><body><form method=POST action=/save>"
-    "SSID <input name=s maxlength=32><br>"
+    "SSID <input name=s maxlength=32 required><br>"
     "Password <input name=p maxlength=64><br>"
+    "ThingsBoard id <input name=t maxlength=64><br>"
     "<button type=submit>Save</button></form></body></html>";
 
 /** @brief Copy @p src into @p dst, keeping room for a NUL. */
@@ -56,8 +57,14 @@ public:
         return open_;
     }
 
-    bool load(char* ssid, size_t ssidCap, char* password, size_t passwordCap) override {
-        if (!open() || ssid == nullptr || password == nullptr || ssidCap == 0 || passwordCap == 0) {
+    bool load(char* ssid,
+              size_t ssidCap,
+              char* password,
+              size_t passwordCap,
+              char* token,
+              size_t tokenCap) override {
+        if (!open() || ssid == nullptr || password == nullptr || token == nullptr || ssidCap == 0 ||
+            passwordCap == 0 || tokenCap == 0) {
             return false;
         }
         if (!prefs_.isKey("ssid")) {
@@ -65,20 +72,25 @@ public:
         }
         copyText(ssid, ssidCap, prefs_.getString("ssid", "").c_str());
         copyText(password, passwordCap, prefs_.getString("pass", "").c_str());
+        copyText(token, tokenCap, prefs_.getString("tb", "").c_str());
         return ssid[0] != '\0';
     }
 
-    bool save(const char* ssid, const char* password) override {
+    bool save(const char* ssid, const char* password, const char* token) override {
         if (!open() || ssid == nullptr || ssid[0] == '\0') {
             return false;
         }
         if (password == nullptr) {
             password = "";
         }
+        if (token == nullptr) {
+            token = "";
+        }
         if (prefs_.putString("ssid", ssid) == 0) {
             return false;
         }
         prefs_.putString("pass", password);
+        prefs_.putString("tb", token);
         return true;
     }
 
@@ -88,6 +100,7 @@ public:
         }
         prefs_.remove("ssid");
         prefs_.remove("pass");
+        prefs_.remove("tb");
         return true;
     }
 
@@ -107,15 +120,22 @@ public:
         posted_ = false;
         ssid_[0] = '\0';
         password_[0] = '\0';
+        token_[0] = '\0';
+        WiFi.persistent(false);
         WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(apName != nullptr ? apName : "lp-gw");
-        server_.on("/", HTTP_GET, [this]() { server_.send(200, "text/html", kPage); });
-        server_.on("/save", HTTP_POST, [this]() {
-            copyText(ssid_, sizeof(ssid_), server_.arg("s").c_str());
-            copyText(password_, sizeof(password_), server_.arg("p").c_str());
-            posted_ = ssid_[0] != '\0';
-            server_.send(200, "text/html", posted_ ? "Saved" : "SSID required");
-        });
+        if (!routes_) {
+            server_.on("/", HTTP_GET, [this]() { server_.send(200, "text/html", kPage); });
+            server_.on("/save", HTTP_POST, [this]() {
+                copyText(ssid_, sizeof(ssid_), server_.arg("s").c_str());
+                copyText(password_, sizeof(password_), server_.arg("p").c_str());
+                copyText(token_, sizeof(token_), server_.arg("t").c_str());
+                posted_ = ssid_[0] != '\0';
+                server_.send(200, "text/html", posted_ ? "Saved. The gateway is joining that network."
+                                                      : "SSID required");
+            });
+            routes_ = true;
+        }
         server_.begin();
         running_ = true;
     }
@@ -125,7 +145,7 @@ public:
             return;
         }
         server_.stop();
-        WiFi.softAPdisconnect(true);
+        WiFi.softAPdisconnect(false);
         running_ = false;
     }
 
@@ -135,12 +155,18 @@ public:
         }
     }
 
-    bool takePosted(char* ssid, size_t ssidCap, char* password, size_t passwordCap) override {
-        if (!posted_ || ssid == nullptr || password == nullptr) {
+    bool takePosted(char* ssid,
+                    size_t ssidCap,
+                    char* password,
+                    size_t passwordCap,
+                    char* token,
+                    size_t tokenCap) override {
+        if (!posted_ || ssid == nullptr || password == nullptr || token == nullptr) {
             return false;
         }
         copyText(ssid, ssidCap, ssid_);
         copyText(password, passwordCap, password_);
+        copyText(token, tokenCap, token_);
         posted_ = false;
         return ssid[0] != '\0';
     }
@@ -149,8 +175,10 @@ private:
     WebServer server_;
     bool running_ = false;
     bool posted_ = false;
+    bool routes_ = false;
     char ssid_[WifiSetup::kSsidCap] = {};
     char password_[WifiSetup::kPasswordCap] = {};
+    char token_[WifiSetup::kTokenCap] = {};
 };
 
 WifiSecrets& deviceWifiSecrets() {
