@@ -98,6 +98,12 @@ NodeCheckIn::NodeCheckIn(RadioPort& radio,
       nodeId_(nodeId),
       intervalMs_(intervalMs) {
     (void)rng;
+    uint8_t counterRaw[kCommandIdBytes] = {};
+    if (records_.read(proto::kLocalSendCounterKey, counterRaw, kCommandIdBytes)) {
+        counter_ = readU32(counterRaw);
+    } else {
+        counter_ = 0x7FFFFFFFu;
+    }
     if (nodeId_ < proto::kMinNodeId || nodeId_ > proto::kMaxNodeId) {
         return;
     }
@@ -201,10 +207,17 @@ proto::Status NodeCheckIn::takeSend(uint16_t* seq, uint32_t* counter) {
     if (started != proto::Status::Ok) {
         return started;
     }
-    counter_ += 1;
+    bumpCounter();
     *seq = next;
     *counter = counter_;
     return proto::Status::Ok;
+}
+
+void NodeCheckIn::bumpCounter() {
+    counter_ += 1;
+    uint8_t raw[kCommandIdBytes] = {};
+    writeU32(raw, counter_);
+    (void)records_.commit(proto::kLocalSendCounterKey, raw, kCommandIdBytes);
 }
 
 proto::Status NodeCheckIn::beginReport(uint32_t now) {
@@ -214,7 +227,7 @@ proto::Status NodeCheckIn::beginReport(uint32_t now) {
         return started;
     }
     seqNum_ = seq;
-    counter_ += 1;
+    bumpCounter();
     outbound_ = Outbound::Telemetry;
     return transmit(now);
 }
@@ -226,7 +239,7 @@ proto::Status NodeCheckIn::beginResult(uint32_t now, uint32_t commandId, uint8_t
         return started;
     }
     seqNum_ = seq;
-    counter_ += 1;
+    bumpCounter();
     outbound_ = Outbound::CommandResult;
     resultCommandId_ = commandId;
     resultStatus_ = status;

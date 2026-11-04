@@ -152,6 +152,13 @@ public:
     Status accept(uint8_t srcId, uint32_t counter);
 
     /**
+     * @brief True when @p counter is not strictly newer than the stored value.
+     *
+     * Does not write the store. A missing record is not stale.
+     */
+    bool stale(uint8_t srcId, uint32_t counter);
+
+    /**
      * @brief Forget the stored counter for @p srcId.
      * @param srcId Sender id in 0..proto::kMaxNodeId.
      * @return Status::Ok, BadDestination, or BadPayload when the store cannot erase.

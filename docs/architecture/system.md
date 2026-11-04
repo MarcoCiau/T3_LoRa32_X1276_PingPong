@@ -92,6 +92,7 @@ With 1–10 nodes and multi-minute intervals, start with one fixed radio profile
 - A lost ACK causes a retry, and a duplicate does not run the command twice.
 - Reboot the gateway and the node while a command is pending; the command still completes once.
 - Disconnect MQTT; LoRa check-ins continue, and buffered data uploads after reconnect.
+- The node telemetry counter and the gateway Ack counter are stored and continue after reboot. A counter that is not newer than the stored one is ignored and is not acknowledged.
 - Reject duplicate, malformed, replayed, and unauthenticated commands.
 - Measure range and worst-case airtime at the chosen spreading factor, bandwidth, and payload size.
 - Confirm frequency, power, and duty-cycle or airtime limits for the deployment region.

@@ -70,6 +70,14 @@ constexpr uint16_t pairSlotKey(uint8_t nodeId) {
 /** @brief Node pairing record. The blob is 6 bytes: flag, id, and last command id. */
 constexpr uint16_t kNodeBindingKey = 0x0500;
 
+/**
+ * @brief Next outgoing replay counter for this device. The blob is a little-endian uint32.
+ *
+ * The node stores the telemetry counter here. The gateway stores the Ack counter here.
+ * Each board has its own store, so the same key is not shared between them.
+ */
+constexpr uint16_t kLocalSendCounterKey = 0x0501;
+
 static_assert(kCommandSlotKeyBase + 16 <= kPairSlotKeyBase,
               "command slots and pairing slots must not overlap");
 static_assert(kPairSlotKeyBase + 16 <= kNodeBindingKey,

@@ -320,6 +320,23 @@ void test_open_window_assigns_an_id_and_ping_ack_carries_no_command(void) {
     TEST_ASSERT_TRUE(fix.commands.nextFor(1, &pending));
 }
 
+void test_stale_counter_is_ignored_and_a_newer_one_is_stored(void) {
+    Fixture fix;
+    const uint8_t stored[] = {10, 0, 0, 0};
+    TEST_ASSERT_TRUE(fix.store.commit(proto::ReplayWindow::replayKey(1), stored, sizeof(stored)));
+
+    queueTelemetry(fix, 3, 4);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(0, fix.radio.txCount());
+    TEST_ASSERT_EQUAL_UINT8(0, fix.uplink.count);
+
+    queueTelemetry(fix, 3, 11);
+    setStatus(fix.service.poll(), proto::Status::Ok);
+    TEST_ASSERT_EQUAL_UINT16(1, fix.radio.txCount());
+    TEST_ASSERT_EQUAL_UINT8(1, fix.uplink.count);
+    TEST_ASSERT_EQUAL_UINT32(11, fix.uplink.records[0].counter);
+}
+
 void test_unpair_frees_the_id(void) {
     Fixture fix;
     uint8_t mac[proto::kMacBytes] = {2, 0, 0, 0, 0, 1};
@@ -344,6 +361,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_command_result_completes_the_command_and_is_uplinked);
     RUN_TEST(test_closed_window_does_not_answer_a_pair_request);
     RUN_TEST(test_open_window_assigns_an_id_and_ping_ack_carries_no_command);
+    RUN_TEST(test_stale_counter_is_ignored_and_a_newer_one_is_stored);
     RUN_TEST(test_unpair_frees_the_id);
     return UNITY_END();
 }

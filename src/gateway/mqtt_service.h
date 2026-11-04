@@ -22,7 +22,7 @@
  *
  * ThingsBoard CE: the broker hostname, for example the address of a local CE install.
  */
-#define LP_MQTT_HOST ""
+#define LP_MQTT_HOST "iot.mciautech.com"
 
 /** @brief Broker TCP port. ThingsBoard CE MQTT is 1883. */
 #define LP_MQTT_PORT 1883

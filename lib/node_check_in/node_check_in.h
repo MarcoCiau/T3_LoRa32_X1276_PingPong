@@ -139,6 +139,9 @@ private:
         Failed,      ///< Encode, store, or radio failed. poll() returns the status.
     };
 
+    /** @brief Advance the outgoing counter and store it. */
+    void bumpCounter();
+
     /** @brief Assign the next telemetry seq and counter, then transmit. */
     proto::Status beginReport(uint32_t now);
 

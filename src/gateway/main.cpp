@@ -161,6 +161,7 @@ struct GatewayApp {
         uint8_t mac[proto::kMacBytes] = {};
         esp_read_mac(mac, ESP_MAC_WIFI_STA);
         std::snprintf(apName, sizeof(apName), "lp-gw-%02X%02X", mac[4], mac[5]);
+        coordinator.restoreSendCounter(store);
     }
 
     /** @brief Copy @p token into tbId and point MQTT at it. */

@@ -14,6 +14,7 @@
 
 class ClockPort;
 class RadioPort;
+class RecordStorePort;
 
 namespace proto {
 class AuthPort;
@@ -80,6 +81,14 @@ public:
     void setIgnorePairRequests(bool ignore);
 
     /**
+     * @brief Continue the Ack counter from @p store.
+     *
+     * A missing record starts at 0x80000000 so an Ack is newer than a counter
+     * saved by an older image. Later calls to send an Ack store the next value.
+     */
+    void restoreSendCounter(RecordStorePort& store);
+
+    /**
      * @brief Listen, and answer one packet if one is waiting.
      * @return Status::Ok when idle or the exchange finished. The radio status when transmit fails.
      */
@@ -138,6 +147,9 @@ private:
      */
     proto::Status sendAck(uint8_t nodeId, bool hasCommand, const QueuedCommand* command);
 
+    /** @brief Write the next Ack counter when restoreSendCounter() was called. */
+    void saveSendCounter();
+
     RadioPort& radio_;
     ClockPort& clock_;
     proto::PacketCodec& codec_;
@@ -149,6 +161,7 @@ private:
     OutboundBuffer& uplink_;
     PairingTable& pairing_;
     bool ignorePair_ = false;
+    RecordStorePort* records_ = nullptr;
     uint32_t txCounter_ = 1;
     LastAck lastAck_[proto::kMaxNodeId + 1] = {};
 };

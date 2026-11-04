@@ -15,8 +15,10 @@
 #include "packet_codec.h"
 #include "pairing_table.h"
 #include "radio_port.h"
+#include "record_store_port.h"
 #include "security.h"
 #include "sequence_manager.h"
+#include "store_keys.h"
 
 #include <cstring>
 
@@ -84,6 +86,30 @@ void RadioService::setIgnorePairRequests(bool ignore) {
     ignorePair_ = ignore;
 }
 
+void RadioService::restoreSendCounter(RecordStorePort& store) {
+    records_ = &store;
+    uint8_t raw[4] = {};
+    if (store.read(proto::kLocalSendCounterKey, raw, sizeof(raw))) {
+        const uint32_t next = static_cast<uint32_t>(raw[0]) | (static_cast<uint32_t>(raw[1]) << 8) |
+                              (static_cast<uint32_t>(raw[2]) << 16) | (static_cast<uint32_t>(raw[3]) << 24);
+        if (next != 0) {
+            txCounter_ = next;
+        }
+        return;
+    }
+    txCounter_ = 0x80000000u;
+    saveSendCounter();
+}
+
+void RadioService::saveSendCounter() {
+    if (records_ == nullptr) {
+        return;
+    }
+    uint8_t raw[4] = {static_cast<uint8_t>(txCounter_), static_cast<uint8_t>(txCounter_ >> 8),
+                      static_cast<uint8_t>(txCounter_ >> 16), static_cast<uint8_t>(txCounter_ >> 24)};
+    (void)records_->commit(proto::kLocalSendCounterKey, raw, sizeof(raw));
+}
+
 proto::Status RadioService::poll() {
     const proto::Status listening = radio_.startReceive();
     if (listening != proto::Status::Ok) {
@@ -143,6 +169,7 @@ proto::Status RadioService::handle(const uint8_t* data, size_t len, float rssi, 
         return proto::Status::Ok;
     }
     if (replay_.accept(decoded.srcId, decoded.counter) != proto::Status::Ok) {
+        seq_.revert(decoded.srcId);
         return proto::Status::Ok;
     }
 
@@ -363,6 +390,7 @@ proto::Status RadioService::sendAck(uint8_t nodeId, bool hasCommand, const Queue
         return sent;
     }
     txCounter_ += 1;
+    saveSendCounter();
     return proto::Status::Ok;
 }
 

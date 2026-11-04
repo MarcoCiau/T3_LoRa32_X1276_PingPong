@@ -82,6 +82,13 @@ public:
      */
     Status accept(uint8_t srcId, uint16_t seq);
 
+    /**
+     * @brief Undo the last successful accept() from @p srcId.
+     *
+     * Used when a later check rejects the packet. A duplicate accept is left as it was.
+     */
+    void revert(uint8_t srcId);
+
 private:
     /** @brief In-flight transmit for one destination. */
     struct Tx {
@@ -92,8 +99,11 @@ private:
 
     /** @brief Last accepted seq from one sender. */
     struct Rx {
-        uint16_t seq;  ///< Last accepted seq. Meaningful when seen is true.
-        bool seen;     ///< False until the first accept from this sender.
+        uint16_t seq;       ///< Last accepted seq. Meaningful when seen is true.
+        uint16_t previous;  ///< Seq before the last successful accept.
+        bool seen;          ///< False until the first accept from this sender.
+        bool had;           ///< True when previous is a real earlier seq.
+        bool fresh;         ///< True when the last accept() stored a new seq.
     };
 
     /** @brief One slot per id from 0 through proto::kMaxNodeId. */

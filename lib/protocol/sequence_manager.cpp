@@ -76,9 +76,22 @@ Status SequenceManager::accept(uint8_t srcId, uint16_t seq) {
     if (rx->seen && rx->seq == seq) {
         return Status::Duplicate;
     }
+    rx->previous = rx->seq;
+    rx->had = rx->seen;
     rx->seen = true;
     rx->seq = seq;
+    rx->fresh = true;
     return Status::Ok;
+}
+
+void SequenceManager::revert(uint8_t srcId) {
+    Rx* rx = rxSlot(srcId);
+    if (rx == nullptr || !rx->fresh) {
+        return;
+    }
+    rx->seen = rx->had;
+    rx->seq = rx->previous;
+    rx->fresh = false;
 }
 
 }  // namespace proto

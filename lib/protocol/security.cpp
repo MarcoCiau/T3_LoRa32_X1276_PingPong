@@ -51,17 +51,26 @@ uint16_t ReplayWindow::replayKey(uint8_t srcId) {
     return replayCounterKey(srcId);
 }
 
+bool ReplayWindow::stale(uint8_t srcId, uint32_t counter) {
+    if (srcId > kMaxNodeId) {
+        return true;
+    }
+    uint8_t stored[kCounterBytes] = {};
+    if (!store_.read(replayKey(srcId), stored, kCounterBytes)) {
+        return false;
+    }
+    return counter <= readU32(stored);
+}
+
 Status ReplayWindow::accept(uint8_t srcId, uint32_t counter) {
     if (srcId > kMaxNodeId) {
         return Status::BadDestination;
     }
-
-    uint8_t stored[kCounterBytes] = {};
-    const uint16_t key = replayKey(srcId);
-    if (store_.read(key, stored, kCounterBytes) && counter <= readU32(stored)) {
+    if (stale(srcId, counter)) {
         return Status::Replay;
     }
 
+    const uint16_t key = replayKey(srcId);
     uint8_t bytes[kCounterBytes] = {};
     writeU32(bytes, counter);
     if (!store_.commit(key, bytes, kCounterBytes)) {
