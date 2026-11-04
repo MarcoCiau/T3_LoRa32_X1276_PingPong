@@ -79,7 +79,7 @@ public:
      * @brief Replace the stored credentials.
      * @param ssid Station name. Empty is rejected.
      * @param password Station secret. Empty is an open network.
-     * @param token ThingsBoard device id. Empty clears the stored id.
+     * @param token ThingsBoard device id. Empty leaves the stored id unchanged.
      * @return false when @p ssid is null or empty.
      */
     virtual bool save(const char* ssid, const char* password, const char* token) = 0;
