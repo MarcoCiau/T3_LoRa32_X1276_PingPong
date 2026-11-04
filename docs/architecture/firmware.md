@@ -29,7 +29,7 @@ firmware/
     pairing             window, assign id, persist bindings
     mqtt_service        uplink telemetry and results, downlink commands
     wifi_manager        connect, backoff, link state; NVS credentials override the compile-time SSID
-    wifi_setup          SoftAP form, started only by the Wi-Fi gesture
+    wifi_setup          SoftAP home, device config, and firmware update; started only by the Wi-Fi gesture
     storage             counters, queue, outbound buffer, pairing table, Wi-Fi credentials
 ```
 
@@ -44,7 +44,7 @@ firmware/
 | `mqtt_service` | Map backend messages onto the queue and ship buffered uplinks | Sit on the check-in path |
 | `button` | Time one press and emit one gesture | Transmit, parse packets, or erase flash |
 | `pairing` | Windows, id assignment, unpair, range ping | Run from the radio IRQ, or open Wi-Fi setup |
-| `wifi_setup` | Replace stored SSID, password, and ThingsBoard device id from the Wi-Fi gesture, then join that SSID | Assign a node id, or erase the pairing table |
+| `wifi_setup` | Serve home, device config, and firmware update; replace stored SSID, password, and ThingsBoard device id, then join that SSID | Assign a node id, or erase the pairing table |
 
 Shared protocol code is linked by both firmwares. It is not a third Arduino sketch.
 

@@ -94,7 +94,7 @@ Show the result on the OLED when the panel is present. The LED is the fallback: 
 The 5 s–10 s release starts setup. It cancels an open pairing window. Check-ins from nodes already paired continue; `PairRequest` is ignored until setup ends.
 
 1. Credentials live in NVS. Empty NVS keeps the compile-time `kWifiSsid` and `kWifiPassword`. An empty SSID still leaves the station down.
-2. Setup starts a SoftAP named `lp-gw-` plus the last two MAC bytes, and serves one form for SSID, password, and the ThingsBoard device id. Those strings are written to NVS, then the gateway returns to station mode and joins that SSID. The broker host stays the compile-time `LP_MQTT_HOST`.
+2. Setup starts a SoftAP named `lp-gw-` plus the last two MAC bytes. `http://192.168.4.1` is the home page (device name, MAC, access point, station, stored network, and whether a ThingsBoard id is stored). Device config collects SSID, password, and the ThingsBoard device id. A blank id leaves the stored id unchanged. Firmware update accepts a `.bin` image and reboots; it does not erase NVS. After a saved form the gateway returns to station mode and joins that SSID. The broker host stays the compile-time `LP_MQTT_HOST`.
 3. A click, or 5 minutes with no write, cancels setup and keeps the previous credentials.
 4. Setup does not erase paired nodes, the command queue, or replay counters.
 
