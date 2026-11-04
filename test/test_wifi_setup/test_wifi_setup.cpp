@@ -56,7 +56,9 @@ public:
         }
         std::strncpy(ssid, inSsid, sizeof(ssid) - 1);
         std::strncpy(password, inPassword != nullptr ? inPassword : "", sizeof(password) - 1);
-        std::strncpy(token, inToken != nullptr ? inToken : "", sizeof(token) - 1);
+        if (inToken != nullptr && inToken[0] != '\0') {
+            std::strncpy(token, inToken, sizeof(token) - 1);
+        }
         saved = true;
         return true;
     }
@@ -122,6 +124,8 @@ void test_form_is_saved_and_cancel_keeps_the_old_secret(void) {
     TEST_ASSERT_TRUE(secrets.saved);
     TEST_ASSERT_EQUAL_STRING("lab", secrets.ssid);
     TEST_ASSERT_EQUAL_STRING("secret", secrets.password);
+    TEST_ASSERT_EQUAL_STRING("device-1", secrets.token);
+    TEST_ASSERT_TRUE(secrets.save("lab", "secret", ""));
     TEST_ASSERT_EQUAL_STRING("device-1", secrets.token);
     TEST_ASSERT_EQUAL_UINT32(1, portal.stops);
     TEST_ASSERT_EQUAL_UINT32(1, station.connects);
